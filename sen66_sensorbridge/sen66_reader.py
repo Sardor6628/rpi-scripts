@@ -61,34 +61,45 @@ class Sen66SensorBridge:
         self._device = Sen66Device(channel)
         self._bridge = bridge
 
-        # The SEN66 may still NACK the first transactions right after boot.
-        # Retry the reset a few times before giving up.
-        last_error = None
-        for attempt in range(1, 6):
-            try:
-                self._device.device_reset()
-                break
-            except Exception as error:  # noqa: BLE001 - includes I2cNackError
-                last_error = error
-                logger.warning(
-                    "SEN66 not responding on port %s (attempt %d/5): %s",
-                    self.sensorbridge_port, attempt, error,
-                )
-                time.sleep(0.5)
-        else:
-            raise RuntimeError(
-                "SEN66 did not respond to reset after 5 attempts. "
-                "Check that the sensor is connected to the correct SensorBridge "
-                "port and that wiring/power are OK."
-            ) from last_error
+        # The SEN66 can NACK the first transactions right after boot. Retry, and
+        # if it keeps failing, power-cycle the port to unstick the sensor before
+        # giving up.
+        try:
+            self._retry_i2c(self._device.device_reset, "device_reset")
+        except RuntimeError:
+            logger.warning("Reset failed; power-cycling SEN66 port %s", self.sensorbridge_port)
+            bridge.switch_supply_off(self.sensorbridge_port)
+            time.sleep(1.0)
+            bridge.switch_supply_on(self.sensorbridge_port)
+            time.sleep(1.2)
+            self._retry_i2c(self._device.device_reset, "device_reset")
 
         time.sleep(1.2)
 
         logger.info("Connected to SEN66 via SensorBridge on %s", self.serial_port_path)
 
+    def _retry_i2c(self, func, name, attempts=5, delay=0.5):
+        """Call an I2C operation, retrying on transient NACKs."""
+        last_error = None
+        for attempt in range(1, attempts + 1):
+            try:
+                return func()
+            except Exception as error:  # noqa: BLE001 - includes I2cNackError
+                last_error = error
+                logger.warning(
+                    "SEN66 %s failed on port %s (attempt %d/%d): %s",
+                    name, self.sensorbridge_port, attempt, attempts, error,
+                )
+                time.sleep(delay)
+        raise RuntimeError(
+            f"SEN66 {name} did not succeed after {attempts} attempts. "
+            "Check that the sensor is connected to the correct SensorBridge "
+            "port and that wiring/power are OK."
+        ) from last_error
+
     def start_measurement(self):
         """Start continuous measurement on SEN66."""
-        self._device.start_continuous_measurement()
+        self._retry_i2c(self._device.start_continuous_measurement, "start_measurement")
         time.sleep(1.1)  # Wait for first measurement
         logger.info("SEN66 measurement started")
 
