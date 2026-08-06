@@ -1,10 +1,13 @@
 import tkinter as tk
-import serial
 import time
+from sensirion_shdlc_driver import ShdlcSerialPort, ShdlcConnection
+from sensirion_shdlc_sensorbridge import (
+    SensorBridgePort,
+    SensorBridgeShdlcDevice,
+    SensorBridgeI2cProxy,
+)
 from sensirion_i2c_driver import I2cConnection
-from sensirion_sensorbridge_i2c_driver import SensorBridgeI2cDevice
 from sensirion_i2c_sht.sht4x import Sht4xI2cDevice
-from sensirion_sensorbridge_driver import SensorBridge
 
 # --------------------------
 # SENSORBRIDGE
@@ -14,17 +17,19 @@ SERIAL_PORTS = ['/dev/ttyUSB0', '/dev/ttyUSB1']
 BAUDRATE = 460800
 I2C_FREQ = 100000
 SUPPLY_V = 3.3
-SHT4X_ADDR = 0x44
+BRIDGE_PORT = SensorBridgePort.ONE
 
 
 def find_bridge():
     for port in SERIAL_PORTS:
         try:
-            ser = serial.Serial(port, BAUDRATE, timeout=1)
-            bridge = SensorBridge(ser)
+            serial_port = ShdlcSerialPort(port, BAUDRATE)
+            bridge = SensorBridgeShdlcDevice(
+                ShdlcConnection(serial_port), slave_address=0
+            )
             print(f"SensorBridge found on {port}")
             return bridge
-        except (serial.SerialException, OSError):
+        except Exception:
             continue
     return None
 
@@ -34,13 +39,13 @@ if bridge is None:
     print("ERROR: No SensorBridge found.")
     exit(1)
 
-bridge.set_i2c_frequency(0, I2C_FREQ)
-bridge.set_supply_voltage(0, SUPPLY_V)
-bridge.switch_supply_on(0)
+bridge.set_i2c_frequency(BRIDGE_PORT, I2C_FREQ)
+bridge.set_supply_voltage(BRIDGE_PORT, SUPPLY_V)
+bridge.switch_supply_on(BRIDGE_PORT)
 time.sleep(0.5)
 
-i2c = SensorBridgeI2cDevice(bridge, port=0, slave_address=SHT4X_ADDR)
-sensor = Sht4xI2cDevice(I2cConnection(i2c))
+i2c_proxy = SensorBridgeI2cProxy(bridge, port=BRIDGE_PORT)
+sensor = Sht4xI2cDevice(I2cConnection(i2c_proxy))
 
 # --------------------------
 # SENSOR
@@ -184,4 +189,4 @@ update()
 try:
     root.mainloop()
 finally:
-    bridge.switch_supply_off(0)
+    bridge.switch_supply_off(BRIDGE_PORT)
