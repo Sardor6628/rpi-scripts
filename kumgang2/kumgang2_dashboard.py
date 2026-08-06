@@ -1,3 +1,4 @@
+import math
 import tkinter as tk
 import time
 from sensirion_shdlc_driver import ShdlcSerialPort, ShdlcConnection
@@ -52,13 +53,24 @@ sensor = Sht4xI2cDevice(I2cConnection(i2c_proxy))
 # --------------------------
 
 
+def calc_dewpoint(temp_c, rh):
+    """Magnus formula for dewpoint (TWS)."""
+    a = 17.625
+    b = 243.04
+    alpha = (a * temp_c) / (b + temp_c) + math.log(rh / 100.0)
+    return (b * alpha) / (a - alpha)
+
+
 def read_sensor():
     try:
         temp, hum = sensor.single_shot_measurement()
-        return float(str(temp).split()[0]), float(str(hum).split()[0]), "Normal"
+        t = float(str(temp).split()[0])
+        h = float(str(hum).split()[0])
+        tws = calc_dewpoint(t, h)
+        return t, h, tws, "Normal"
     except Exception as e:
         print(e)
-        return None, None, "Error"
+        return None, None, None, "Error"
 
 
 # --------------------------
@@ -120,6 +132,33 @@ hum_unit = tk.Label(
 )
 hum_unit.pack()
 
+tws_label = tk.Label(
+    frame,
+    text="TWS (Windshield)",
+    font=("Arial", 24, "bold"),
+    fg="white",
+    bg=background
+)
+tws_label.pack(pady=(20, 0))
+
+tws_value = tk.Label(
+    frame,
+    text="--",
+    font=("Arial", 60, "bold"),
+    fg="white",
+    bg=background
+)
+tws_value.pack()
+
+tws_unit = tk.Label(
+    frame,
+    text="°C (dewpoint)",
+    font=("Arial", 22),
+    fg="white",
+    bg=background
+)
+tws_unit.pack()
+
 status_label = tk.Label(
     frame,
     text="Status: --",
@@ -149,6 +188,9 @@ def set_color(color):
         temp_unit,
         hum_value,
         hum_unit,
+        tws_label,
+        tws_value,
+        tws_unit,
         status_label,
         clock
     )
@@ -158,11 +200,12 @@ def set_color(color):
 
 
 def update():
-    temp, hum, sensor_status = read_sensor()
+    temp, hum, tws, sensor_status = read_sensor()
 
     if temp is not None:
         temp_value.config(text=f"{temp:.1f}")
         hum_value.config(text=f"{hum:.1f}")
+        tws_value.config(text=f"{tws:.1f}")
         status_label.config(text=f"Status: {sensor_status}")
 
         if temp <= 20:
@@ -176,6 +219,7 @@ def update():
     else:
         temp_value.config(text="--")
         hum_value.config(text="--")
+        tws_value.config(text="--")
         status_label.config(text=f"Status: {sensor_status}")
 
     clock.config(text=time.strftime("%H:%M:%S"))

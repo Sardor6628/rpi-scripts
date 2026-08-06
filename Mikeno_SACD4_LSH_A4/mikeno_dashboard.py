@@ -3,115 +3,107 @@ import serial
 import time
 
 # --------------------------
-# LIN / MANI LDF
+# LIN / ICO2 LDF (SACD4-LCH1_D3.ldf)
 # --------------------------
 
-ser = serial.Serial("/dev/serial0", 115200, timeout=0.25)
+ser = serial.Serial("/dev/serial0", 115200, timeout=0.2)
 
-FRAME_MASTER = "1D"  # SACD_Master_Frame
-FRAME_SENSOR = "1F"  # SACD_Sensor_Frame
+FRAME_MASTER = "1D"  # ICO2e_01 (master → slave, 8 bytes)
+FRAME_SLAVE  = "1F"  # ICO2s_01 (slave → master, 8 bytes)
 
-def send(cmd, delay=0.06):
+
+def send(cmd, delay=0.05):
     ser.reset_input_buffer()
     ser.write((cmd + "\r").encode())
     time.sleep(delay)
     return ser.read_all().decode(errors="ignore").strip()
 
+
 def get_bits(v, start, length):
     return (v >> start) & ((1 << length) - 1)
+
 
 def set_bits(v, start, length, val):
     mask = ((1 << length) - 1) << start
     return (v & ~mask) | ((val & ((1 << length) - 1)) << start)
 
-def encode_master_frame(
-    measure_mode=1,      # 0=NoMeasurement, 1=DrivingMode, 2=ParkingMode
-    debounce1_s=20,
-    debounce2_s=10,
-    measure_rate_s=300,  # phys = raw*2 + 2
-    observation_min=720,
-    threshold1_ppm=20000,  # phys = raw*250
-    threshold2_ppm=30000,  # phys = raw*250
-    master_pressure_mbar=1000,  # phys = raw*10 + 500
-):
-    deb1_raw = max(0, min(255, int(debounce1_s)))
-    deb2_raw = max(0, min(255, int(debounce2_s)))
-    rate_raw = max(0, min(255, int((measure_rate_s - 2) / 2)))
-    obs_raw = max(0, min(1023, int(observation_min)))
-    thr1_raw = max(0, min(255, int(threshold1_ppm / 250)))
-    thr2_raw = max(0, min(255, int(threshold2_ppm / 250)))
-    p_raw = max(0, min(255, int((master_pressure_mbar - 500) / 10)))
 
+def encode_master(messvorgabe=1, status_kabine=0, luftdruck_2=600,
+                  messzyklus1=0, messzyklus2=0):
+    """Build the 8-byte ICO2e_01 master frame payload.
+
+    Signal layout (bit offsets from LDF):
+        ICO2_Messvorgabe   :  0, 3 bits   (0=off, 1=Fahrbetrieb, 2=Parkbetrieb)
+        ICO2_Status_Kabine :  3, 3 bits
+        ICO2_Luftdruck_2   :  6, 10 bits  (phys = raw + 400 mbar)
+        ICO2_Messzyklus1   : 16, 8 bits
+        ICO2_Messzyklus2   : 24, 8 bits
+    """
     v = 0
-    v = set_bits(v, 0, 2, measure_mode)
-    v = set_bits(v, 2, 8, deb1_raw)
-    v = set_bits(v, 10, 8, deb2_raw)
-    v = set_bits(v, 18, 8, rate_raw)
-    v = set_bits(v, 26, 10, obs_raw)
-    v = set_bits(v, 36, 8, thr1_raw)
-    v = set_bits(v, 44, 8, thr2_raw)
-    v = set_bits(v, 52, 8, p_raw)
-
+    v = set_bits(v, 0, 3, messvorgabe)
+    v = set_bits(v, 3, 3, status_kabine)
+    v = set_bits(v, 6, 10, luftdruck_2)
+    v = set_bits(v, 16, 8, messzyklus1)
+    v = set_bits(v, 24, 8, messzyklus2)
     return v.to_bytes(8, "little").hex().upper()
 
-def send_master_config(mode=1):
-    payload = encode_master_frame(measure_mode=mode)
+
+def send_master_config(messvorgabe=1, luftdruck_2=600):
+    payload = encode_master(messvorgabe=messvorgabe, luftdruck_2=luftdruck_2)
     send(f"T{FRAME_MASTER}8{payload}")
 
-def decode_sensor(rx):
+
+def decode_slave(rx):
+    """Decode the 8-byte ICO2s_01 slave frame.
+
+    Signal layout (bit offsets from LDF):
+        ICO2_CO2_Wert      :  0, 10 bits  (0.01 kPa per step = 100 ppm)
+        ICO2_Alarm         : 10,  2 bits   (0=OK, 1=Gradient, 2=Limit)
+        ICO2_BZ            : 12,  4 bits
+        ICO2_Gradient      : 16, 10 bits   (phys = raw*100 - 50000)
+        ICO2_Luftdruck     : 26, 10 bits   (phys = raw + 400 mbar)
+        ICO2_ResponseError : 36,  1 bit
+        ICO2_defekt        : 37,  1 bit
+        ICO2_Laufzeit      : 40, 16 bits   (phys = raw*10 s)
+    """
     if not rx.startswith("M"):
         return None
 
     h = "".join(c for c in rx if c in "0123456789ABCDEFabcdef").upper()
-    i = h.find(FRAME_SENSOR)
+    i = h.find(FRAME_SLAVE)
     if i < 0 or len(h) < i + 2 + 16:
         return None
 
     payload = h[i + 2:i + 18]
-    b = bytes.fromhex(payload)
-    v = int.from_bytes(b, "little")
+    v = int.from_bytes(bytes.fromhex(payload), "little")
 
-    gas_raw = get_bits(v, 0, 16)
-    alarm = get_bits(v, 16, 2)
-    temp_raw = get_bits(v, 18, 8)
-    hum_raw = get_bits(v, 26, 8)
-    sp_raw = get_bits(v, 34, 8)
-    fc = get_bits(v, 42, 4)
-    ste = get_bits(v, 46, 1)
-    re = get_bits(v, 47, 1)
+    co2_raw = get_bits(v, 0, 10)
+    alarm   = get_bits(v, 10, 2)
+    bz      = get_bits(v, 12, 4)
+    grad    = get_bits(v, 16, 10)
+    press   = get_bits(v, 26, 10)
+    re      = get_bits(v, 36, 1)
+    defect  = get_bits(v, 37, 1)
+    rt_raw  = get_bits(v, 40, 16)
 
-    def dec_temp(r):
-        if r in (0xFD, 0xFE, 0xFF):
-            return None
-        return r * 0.5 - 40.0
+    co2_ppm = None if co2_raw in (1022, 1023) else co2_raw * 100
+    grad_v  = None if grad in (1022, 1023) else grad * 100 - 50000
+    p_mbar  = None if press in (1021, 1022, 1023) else press + 400
+    rt_s    = None if rt_raw in (65534, 65535) else rt_raw * 10
 
-    def dec_hum(r):
-        if r in (0xFD, 0xFE, 0xFF):
-            return None
-        return r * 0.5
-
-    def dec_press(r):
-        if r in (0xFD, 0xFE, 0xFF):
-            return None
-        return r * 10 + 500
-
-    if gas_raw in (0xFFFD, 0xFFFE, 0xFFFF):
-        gas_ppm = None
-    else:
-        gas_ppm = gas_raw
-
-    alarm_txt = "ALARM" if alarm == 2 else "OK"
+    alarm_map = {0: "OK", 1: "Gradient", 2: "Limit"}
 
     return {
-        "gas_ppm": gas_ppm,
-        "alarm": alarm_txt,
-        "temp_c": dec_temp(temp_raw),
-        "rh": dec_hum(hum_raw),
-        "press_mbar": dec_press(sp_raw),
-        "fc": fc,
-        "ste": ste,
-        "re": re,
+        "co2_ppm": co2_ppm,
+        "alarm": alarm_map.get(alarm, str(alarm)),
+        "bz": bz,
+        "gradient": grad_v,
+        "press_mbar": p_mbar,
+        "runtime_s": rt_s,
+        "defect": defect,
+        "resp_err": re,
     }
+
 
 # --------------------------
 # UI
@@ -128,8 +120,9 @@ def quality_color(ppm):
         return "#e67e22", "HIGH"
     return "#e74c3c", "DANGER"
 
+
 root = tk.Tk()
-root.title("MANI CO2")
+root.title("ICO2 – Mikeno")
 root.attributes("-fullscreen", True)
 
 bg = "#2ecc71"
@@ -153,10 +146,10 @@ quality.pack(pady=10)
 status = tk.Label(frame, text="Alarm: --", font=("Arial", 22), fg="white", bg=bg)
 status.pack()
 
-details = tk.Label(frame, text="T: --  RH: --  P: --", font=("Arial", 20), fg="white", bg=bg)
+details = tk.Label(frame, text="P: --  RT: --  Grad: --", font=("Arial", 20), fg="white", bg=bg)
 details.pack()
 
-errors = tk.Label(frame, text="STE: --  RE: --  FC: --", font=("Arial", 18), fg="white", bg=bg)
+errors = tk.Label(frame, text="Def: --  RE: --  BZ: --", font=("Arial", 18), fg="white", bg=bg)
 errors.pack()
 
 clock = tk.Label(frame, text="", font=("Arial", 18), fg="white", bg=bg)
@@ -164,17 +157,19 @@ clock.pack(pady=10)
 
 widgets = (frame, title, value, unit, quality, status, details, errors, clock)
 
+
 def set_color(color):
     root.configure(bg=color)
     for w in widgets:
         w.configure(bg=color)
 
-def update():
-    send_master_config(mode=1)
-    rx = send(f"r{FRAME_SENSOR}", 0.15)
-    data = decode_sensor(rx)
 
-    ppm = data["gas_ppm"] if data else None
+def update():
+    send_master_config(messvorgabe=1, luftdruck_2=600)
+    rx = send(f"r{FRAME_SLAVE}", 0.15)
+    data = decode_slave(rx)
+
+    ppm = data["co2_ppm"] if data else None
     color, label = quality_color(ppm)
     set_color(color)
     quality.config(text=label)
@@ -182,26 +177,28 @@ def update():
     if data and ppm is not None:
         value.config(text=str(ppm))
         status.config(text=f"Alarm: {data['alarm']}")
-        t = "--" if data["temp_c"] is None else f"{data['temp_c']:.1f}C"
-        rh = "--" if data["rh"] is None else f"{data['rh']:.1f}%"
         p = "--" if data["press_mbar"] is None else f"{data['press_mbar']} mbar"
-        details.config(text=f"T: {t}  RH: {rh}  P: {p}")
-        errors.config(text=f"STE: {data['ste']}  RE: {data['re']}  FC: {data['fc']}")
+        rt = "--" if data["runtime_s"] is None else f"{data['runtime_s']} s"
+        grad = "--" if data["gradient"] is None else str(data["gradient"])
+        details.config(text=f"P: {p}  RT: {rt}  Grad: {grad}")
+        errors.config(text=f"Def: {data['defect']}  RE: {data['resp_err']}  BZ: {data['bz']}")
     else:
         value.config(text="--")
         status.config(text="Alarm: --")
-        details.config(text="T: --  RH: --  P: --")
-        errors.config(text="STE: --  RE: --  FC: --")
+        details.config(text="P: --  RT: --  Grad: --")
+        errors.config(text="Def: --  RE: --  BZ: --")
 
     clock.config(text=time.strftime("%H:%M:%S"))
     root.after(1000, update)
 
+
 root.bind("<Escape>", lambda e: root.destroy())
 
+# ── Init LIN bus ─────────────────────────────────────────────────────────────
 print(send("V", 0.2))
 send("S3")
 send("O")
-send_master_config(mode=1)
+send_master_config(messvorgabe=1, luftdruck_2=600)
 time.sleep(1)
 
 update()
@@ -209,6 +206,6 @@ update()
 try:
     root.mainloop()
 finally:
-    send_master_config(mode=0)
+    send_master_config(messvorgabe=0, luftdruck_2=600)
     send("C")
     ser.close()

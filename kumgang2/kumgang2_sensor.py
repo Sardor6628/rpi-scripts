@@ -1,3 +1,4 @@
+import math
 import time
 from datetime import datetime
 from sensirion_shdlc_driver import ShdlcSerialPort, ShdlcConnection
@@ -43,13 +44,26 @@ time.sleep(0.5)
 i2c_proxy = SensorBridgeI2cProxy(bridge, port=BRIDGE_PORT)
 sensor = Sht4xI2cDevice(I2cConnection(i2c_proxy))
 
+
+def calc_dewpoint(temp_c, rh):
+    """Magnus formula for dewpoint (TWS)."""
+    a = 17.625
+    b = 243.04
+    alpha = (a * temp_c) / (b + temp_c) + math.log(rh / 100.0)
+    return (b * alpha) / (a - alpha)
+
+
 try:
     while True:
         temp, hum = sensor.single_shot_measurement()
+        t = float(str(temp).split()[0])
+        h = float(str(hum).split()[0])
+        tws = calc_dewpoint(t, h)
         print(
             f"{datetime.now():%H:%M:%S}  "
-            f"Temp={temp}  "
-            f"Humidity={hum}"
+            f"Temp={t:.2f} °C  "
+            f"Humidity={h:.2f} %RH  "
+            f"TWS={tws:.2f} °C"
         )
         time.sleep(1)
 
