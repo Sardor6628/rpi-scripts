@@ -41,8 +41,11 @@ class Sen66SensorBridge:
         self._port = ShdlcSerialPort(port=self.serial_port_path, baudrate=460800)
         bridge = SensorBridgeShdlcDevice(ShdlcConnection(self._port), slave_address=0)
 
-        # Configure SensorBridge port for I2C
-        bridge.set_i2c_frequency(self.sensorbridge_port, frequency=100e3)
+        # Configure SensorBridge port for I2C.
+        # 50 kHz instead of 100 kHz: the measurement-data read is a 27-byte
+        # transaction, and at 100 kHz the bus returns all-0xFF on long reads
+        # (checksum errors), likely due to cable capacitance / pull-up issues.
+        bridge.set_i2c_frequency(self.sensorbridge_port, frequency=50e3)
         bridge.set_supply_voltage(self.sensorbridge_port, voltage=3.3)
         bridge.switch_supply_on(self.sensorbridge_port)
 
@@ -129,7 +132,8 @@ class Sen66SensorBridge:
         """
         self._wait_for_data_ready()
         (pm1p0, pm2p5, pm4p0, pm10p0, humidity,
-         temperature, voc_index, nox_index, co2) = self._device.read_measured_values()
+         temperature, voc_index, nox_index, co2) = self._retry_i2c(
+            self._device.read_measured_values, "read_measured_values")
         return {
             "pm1p0": pm1p0,
             "pm2p5": pm2p5,
