@@ -109,11 +109,13 @@ send("S3")
 send("O")
 send_master_config(messvorgabe=1, luftdruck_2=600)
 
-time.sleep(2)
+# sensor needs time to start measuring after receiving Messvorgabe=1
+time.sleep(10)
+
+last_keepalive = time.time()
 
 try:
     while True:
-        send_master_config(messvorgabe=1, luftdruck_2=600)
         rx = send(f"r{FRAME_SLAVE}", 0.15)
         data = decode_slave(rx)
 
@@ -130,6 +132,11 @@ try:
             )
         else:
             print(f"{ts}  no valid frame  raw={rx!r}")
+
+        # keepalive: re-send master config every 30s
+        if time.time() - last_keepalive > 30:
+            send_master_config(messvorgabe=1, luftdruck_2=600)
+            last_keepalive = time.time()
 
         time.sleep(1)
 

@@ -165,7 +165,7 @@ def set_color(color):
 
 
 def update():
-    send_master_config(messvorgabe=1, luftdruck_2=600)
+    global last_keepalive
     rx = send(f"r{FRAME_SLAVE}", 0.15)
     data = decode_slave(rx)
 
@@ -188,6 +188,11 @@ def update():
         details.config(text="P: --  RT: --  Grad: --")
         errors.config(text="Def: --  RE: --  BZ: --")
 
+    # keepalive: re-send master config every 30s
+    if time.time() - last_keepalive > 30:
+        send_master_config(messvorgabe=1, luftdruck_2=600)
+        last_keepalive = time.time()
+
     clock.config(text=time.strftime("%H:%M:%S"))
     root.after(1000, update)
 
@@ -199,8 +204,9 @@ print(send("V", 0.2))
 send("S3")
 send("O")
 send_master_config(messvorgabe=1, luftdruck_2=600)
-time.sleep(1)
+time.sleep(10)
 
+last_keepalive = time.time()
 update()
 
 try:
