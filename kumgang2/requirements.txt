@@ -1,0 +1,5 @@
+sensirion-sensorbridge-i2c-driver
+sensirion-sensorbridge-driver
+sensirion-i2c-driver
+sensirion-i2c-sht
+pyserial
