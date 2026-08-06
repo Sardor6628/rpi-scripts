@@ -46,6 +46,11 @@ class Sen66SensorBridge:
         bridge.set_supply_voltage(self.sensorbridge_port, voltage=3.3)
         bridge.switch_supply_on(self.sensorbridge_port)
 
+        # Give the SEN66 time to boot after power-up before talking to it.
+        # Without this delay the first I2C transaction is NACKed and the
+        # SensorBridge reports "device with address 0 returned error 41".
+        time.sleep(1.0)
+
         # Create I2C proxy and SEN66 device
         i2c_transceiver = SensorBridgeI2cProxy(bridge, port=self.sensorbridge_port)
         channel = I2cChannel(
@@ -55,7 +60,28 @@ class Sen66SensorBridge:
         )
         self._device = Sen66Device(channel)
         self._bridge = bridge
-        self._device.device_reset()
+
+        # The SEN66 may still NACK the first transactions right after boot.
+        # Retry the reset a few times before giving up.
+        last_error = None
+        for attempt in range(1, 6):
+            try:
+                self._device.device_reset()
+                break
+            except Exception as error:  # noqa: BLE001 - includes I2cNackError
+                last_error = error
+                logger.warning(
+                    "SEN66 not responding on port %s (attempt %d/5): %s",
+                    self.sensorbridge_port, attempt, error,
+                )
+                time.sleep(0.5)
+        else:
+            raise RuntimeError(
+                "SEN66 did not respond to reset after 5 attempts. "
+                "Check that the sensor is connected to the correct SensorBridge "
+                "port and that wiring/power are OK."
+            ) from last_error
+
         time.sleep(1.2)
 
         logger.info("Connected to SEN66 via SensorBridge on %s", self.serial_port_path)
