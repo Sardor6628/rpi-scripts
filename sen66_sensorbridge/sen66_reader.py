@@ -45,8 +45,16 @@ class _CmdGetDataReady(SensirionI2cCommand):
                          read_delay=0.02, timeout=0, crc=_CRC, command_bytes=2)
 
     def interpret_response(self, data):
-        # Returns (padding, data_ready) – data_ready is True when bit 0 of second byte is set
-        return bool(data[1] & 0x01)
+        # 3 raw bytes: 2 data + 1 CRC. Validate CRC, return data_ready flag.
+        data = bytearray(data)
+        pair = data[0:2]
+        crc_byte = data[2]
+        expected = _CRC(pair)
+        if crc_byte != expected:
+            from sensirion_i2c_driver.errors import I2cChecksumError
+            raise I2cChecksumError(crc_byte, expected, bytes(data))
+        # data_ready is True when the second byte's LSB is set
+        return bool(pair[1] & 0x01)
 
 
 class _CmdReadMeasuredValues(SensirionI2cCommand):
@@ -56,13 +64,23 @@ class _CmdReadMeasuredValues(SensirionI2cCommand):
                          read_delay=0.02, timeout=0, crc=_CRC, command_bytes=2)
 
     def interpret_response(self, data):
-        # 9 x uint16/int16 values (CRC already stripped by driver).
+        # Raw response is 27 bytes: 9 groups of (2 data bytes + 1 CRC byte).
+        # Validate and strip CRC bytes to get 18 bytes of payload.
+        data = bytearray(data)
+        stripped = bytearray()
+        for i in range(0, len(data), 3):
+            pair = data[i:i+2]
+            crc_byte = data[i+2]
+            expected = _CRC(pair)
+            if crc_byte != expected:
+                from sensirion_i2c_driver.errors import I2cChecksumError
+                raise I2cChecksumError(crc_byte, expected, bytes(data))
+            stripped.extend(pair)
         # Format: PM1.0, PM2.5, PM4.0, PM10.0 (uint16, /10)
         #         humidity (int16, /100), temperature (int16, /200)
         #         voc_index (int16, /10), nox_index (int16, /10)
         #         co2 (uint16, raw ppm)
-        values = struct.unpack('>HHHHhhhhH', data)
-        return values
+        return struct.unpack('>HHHHhhhhH', bytes(stripped))
 
 
 class _CmdDeviceReset(SensirionI2cCommand):
@@ -78,7 +96,11 @@ class _CmdGetProductType(SensirionI2cCommand):
                          read_delay=0.02, timeout=0, crc=_CRC, command_bytes=2)
 
     def interpret_response(self, data):
-        return data.rstrip(b'\x00').decode('ascii')
+        data = bytearray(data)
+        stripped = bytearray()
+        for i in range(0, len(data), 3):
+            stripped.extend(data[i:i+2])
+        return bytes(stripped).rstrip(b'\x00').decode('ascii')
 
 
 class Sen66SensorBridge:
