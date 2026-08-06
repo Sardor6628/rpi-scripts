@@ -1,5 +1,5 @@
-sensirion-sensorbridge-i2c-driver
-sensirion-sensorbridge-driver
-sensirion-i2c-driver
+sensirion-shdlc-driver>=0.4.0
+sensirion-shdlc-sensorbridge>=0.1.1
+sensirion-i2c-driver>=1.0.0
 sensirion-i2c-sht
 pyserial
