@@ -11,8 +11,9 @@ from sensirion_shdlc_sensorbridge import (
     SensorBridgeShdlcDevice,
     SensorBridgeI2cProxy,
 )
-from sensirion_i2c_driver import I2cConnection
-from sensirion_i2c_sen6x import Sen6xI2cDevice
+from sensirion_i2c_driver import I2cConnection, CrcCalculator
+from sensirion_driver_adapters.i2c_adapter.i2c_channel import I2cChannel
+from sensirion_i2c_sen66.device import Sen66Device
 
 logger = logging.getLogger(__name__)
 
@@ -47,15 +48,22 @@ class Sen66SensorBridge:
 
         # Create I2C proxy and SEN66 device
         i2c_transceiver = SensorBridgeI2cProxy(bridge, port=self.sensorbridge_port)
-        self._device = Sen6xI2cDevice(I2cConnection(i2c_transceiver))
+        channel = I2cChannel(
+            I2cConnection(i2c_transceiver),
+            slave_address=SEN66_I2C_ADDRESS,
+            crc=CrcCalculator(8, 0x31, 0xFF, 0x0),
+        )
+        self._device = Sen66Device(channel)
         self._bridge = bridge
+        self._device.device_reset()
+        time.sleep(1.2)
 
         logger.info("Connected to SEN66 via SensorBridge on %s", self.serial_port_path)
 
     def start_measurement(self):
         """Start continuous measurement on SEN66."""
-        self._device.start_measurement()
-        time.sleep(1)  # Wait for first measurement
+        self._device.start_continuous_measurement()
+        time.sleep(1.1)  # Wait for first measurement
         logger.info("SEN66 measurement started")
 
     def read_data(self):
@@ -66,17 +74,18 @@ class Sen66SensorBridge:
             dict with keys: pm1p0, pm2p5, pm4p0, pm10p0, humidity, temperature,
                            voc_index, nox_index, co2
         """
-        values = self._device.read_measured_values()
+        (pm1p0, pm2p5, pm4p0, pm10p0, humidity,
+         temperature, voc_index, nox_index, co2) = self._device.read_measured_values()
         return {
-            "pm1p0": values.mass_concentration_1p0.physical,
-            "pm2p5": values.mass_concentration_2p5.physical,
-            "pm4p0": values.mass_concentration_4p0.physical,
-            "pm10p0": values.mass_concentration_10p0.physical,
-            "humidity": values.ambient_humidity.physical,
-            "temperature": values.ambient_temperature.physical,
-            "voc_index": values.voc_index.physical,
-            "nox_index": values.nox_index.physical,
-            "co2": values.co2.physical,
+            "pm1p0": pm1p0,
+            "pm2p5": pm2p5,
+            "pm4p0": pm4p0,
+            "pm10p0": pm10p0,
+            "humidity": humidity,
+            "temperature": temperature,
+            "voc_index": voc_index,
+            "nox_index": nox_index,
+            "co2": co2,
         }
 
     def stop_measurement(self):
