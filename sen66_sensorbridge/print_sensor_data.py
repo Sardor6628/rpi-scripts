@@ -46,8 +46,7 @@ def parse_args():
     )
     parser.add_argument(
         "--label",
-        default="PM_Halla",
-        choices=["PM_Halla", "Eagle"],
+        default="SEN66",
         help="Measurement label",
     )
     parser.add_argument("--interval", type=float, default=1.0, help="Sampling interval in seconds")
