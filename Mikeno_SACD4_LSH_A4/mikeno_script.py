@@ -2,14 +2,14 @@ import serial
 import time
 from datetime import datetime
 
-ser = serial.Serial("/dev/serial0", 115200, timeout=0.2)
+ser = serial.Serial("/dev/serial0", 115200, timeout=0.25)
 
 # ── LDF constants (SACD4-LCH1_D3.ldf, ICO2 on Klima_LIN6) ──────────────────
 FRAME_MASTER = "1D"   # ICO2e_01 (master → slave, 8 bytes)
 FRAME_SLAVE  = "1F"   # ICO2s_01 (slave → master, 8 bytes)
 
 
-def send(cmd, delay=0.05):
+def send(cmd, delay=0.06):
     ser.reset_input_buffer()
     ser.write((cmd + "\r").encode())
     time.sleep(delay)
@@ -47,7 +47,8 @@ def encode_master(messvorgabe=1, status_kabine=0, luftdruck_2=600,
 
 def send_master_config(messvorgabe=1, luftdruck_2=600):
     payload = encode_master(messvorgabe=messvorgabe, luftdruck_2=luftdruck_2)
-    send(f"T{FRAME_MASTER}8{payload}")
+    resp = send(f"T{FRAME_MASTER}8{payload}")
+    return resp
 
 
 def decode_slave(rx):
@@ -107,15 +108,18 @@ def decode_slave(rx):
 print(send("V", 0.2))
 send("S3")
 send("O")
-send_master_config(messvorgabe=1, luftdruck_2=600)
 
-# sensor needs time to start measuring after receiving Messvorgabe=1
-time.sleep(10)
-
-last_keepalive = time.time()
+# First master frame + settle time
+print("CTRL:", send_master_config(messvorgabe=1, luftdruck_2=600))
+time.sleep(1)
 
 try:
     while True:
+        # LDF schedule: ICO2e_01 (100ms) then ICO2s_01 (100ms)
+        # Must send master frame before each slave read
+        send_master_config(messvorgabe=1, luftdruck_2=600)
+        time.sleep(0.1)  # 100ms inter-frame delay per schedule table
+
         rx = send(f"r{FRAME_SLAVE}", 0.15)
         data = decode_slave(rx)
 
@@ -133,12 +137,7 @@ try:
         else:
             print(f"{ts}  no valid frame  raw={rx!r}")
 
-        # keepalive: re-send master config every 30s
-        if time.time() - last_keepalive > 30:
-            send_master_config(messvorgabe=1, luftdruck_2=600)
-            last_keepalive = time.time()
-
-        time.sleep(1)
+        time.sleep(0.1)  # 100ms before next schedule cycle
 
 except KeyboardInterrupt:
     print("\nStopping...")

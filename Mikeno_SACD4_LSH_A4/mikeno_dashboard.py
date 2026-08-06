@@ -6,13 +6,13 @@ import time
 # LIN / ICO2 LDF (SACD4-LCH1_D3.ldf)
 # --------------------------
 
-ser = serial.Serial("/dev/serial0", 115200, timeout=0.2)
+ser = serial.Serial("/dev/serial0", 115200, timeout=0.25)
 
 FRAME_MASTER = "1D"  # ICO2e_01 (master → slave, 8 bytes)
 FRAME_SLAVE  = "1F"  # ICO2s_01 (slave → master, 8 bytes)
 
 
-def send(cmd, delay=0.05):
+def send(cmd, delay=0.06):
     ser.reset_input_buffer()
     ser.write((cmd + "\r").encode())
     time.sleep(delay)
@@ -165,7 +165,10 @@ def set_color(color):
 
 
 def update():
-    global last_keepalive
+    # LDF schedule: send master frame before every slave read
+    send_master_config(messvorgabe=1, luftdruck_2=600)
+    time.sleep(0.1)  # 100ms inter-frame delay per schedule table
+
     rx = send(f"r{FRAME_SLAVE}", 0.15)
     data = decode_slave(rx)
 
@@ -188,13 +191,8 @@ def update():
         details.config(text="P: --  RT: --  Grad: --")
         errors.config(text="Def: --  RE: --  BZ: --")
 
-    # keepalive: re-send master config every 30s
-    if time.time() - last_keepalive > 30:
-        send_master_config(messvorgabe=1, luftdruck_2=600)
-        last_keepalive = time.time()
-
     clock.config(text=time.strftime("%H:%M:%S"))
-    root.after(1000, update)
+    root.after(500, update)
 
 
 root.bind("<Escape>", lambda e: root.destroy())
@@ -204,9 +202,8 @@ print(send("V", 0.2))
 send("S3")
 send("O")
 send_master_config(messvorgabe=1, luftdruck_2=600)
-time.sleep(10)
+time.sleep(1)
 
-last_keepalive = time.time()
 update()
 
 try:
