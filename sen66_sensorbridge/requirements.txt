@@ -1,0 +1,8 @@
+# Sensirion public packages (available on PyPI - no SensiLab access needed)
+sensirion-shdlc-driver>=0.4.0
+sensirion-shdlc-sensorbridge>=0.1.1
+sensirion-i2c-driver>=1.0.0
+sensirion-i2c-sen6x>=0.3.0
+
+# Dashboard
+rich>=13.0.0
