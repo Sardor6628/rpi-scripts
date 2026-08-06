@@ -103,6 +103,22 @@ class Sen66SensorBridge:
         time.sleep(1.1)  # Wait for first measurement
         logger.info("SEN66 measurement started")
 
+    def _wait_for_data_ready(self, timeout=5.0, poll_interval=0.1):
+        """Poll the SEN66 data-ready flag until new measurement data is available.
+
+        Reading measured values before data is ready returns all-0xFF bytes,
+        which the driver reports as a CRC/checksum error. Polling avoids that.
+        """
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            _padding, data_ready = self._retry_i2c(
+                self._device.get_data_ready, "get_data_ready"
+            )
+            if data_ready:
+                return
+            time.sleep(poll_interval)
+        raise RuntimeError("Timed out waiting for SEN66 data to become ready")
+
     def read_data(self):
         """
         Read all measured values from SEN66.
@@ -111,6 +127,7 @@ class Sen66SensorBridge:
             dict with keys: pm1p0, pm2p5, pm4p0, pm10p0, humidity, temperature,
                            voc_index, nox_index, co2
         """
+        self._wait_for_data_ready()
         (pm1p0, pm2p5, pm4p0, pm10p0, humidity,
          temperature, voc_index, nox_index, co2) = self._device.read_measured_values()
         return {
