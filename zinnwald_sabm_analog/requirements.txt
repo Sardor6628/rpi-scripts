@@ -1,5 +1,0 @@
-# MCC USB-1208FS-Plus DAQ driver
-uldaq>=1.2.3
-
-# Dashboard
-rich>=13.0.0

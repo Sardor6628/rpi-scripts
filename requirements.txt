@@ -1,0 +1,38 @@
+# =============================================================================
+# Combined Python requirements for the whole rpi-scripts project.
+# Install into a single shared virtual environment (see setup.sh).
+#
+# Note: tkinter (used by the *_dashboard.py GUIs) is NOT a pip package.
+# It is provided by the system package `python3-tk` and made available to the
+# venv via `--system-site-packages` (handled in setup.sh).
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Serial communication
+# Used by: Eagle_SADP3-LY2, Mikeno_SACD4_LSH_A4, PM_Halla,
+#          Lin_connect.py, master_slave.py, kumgang2
+# -----------------------------------------------------------------------------
+pyserial
+
+# -----------------------------------------------------------------------------
+# Terminal dashboards (rich text UI)
+# Used by: sen66_sensorbridge, zinnwald_sabm_analog
+# -----------------------------------------------------------------------------
+rich>=13.0.0
+
+# -----------------------------------------------------------------------------
+# Sensirion sensor stack
+# Used by: kumgang2 (SHT4x), sen66_sensorbridge (SEN66)
+# -----------------------------------------------------------------------------
+sensirion-shdlc-driver>=0.4.0
+sensirion-shdlc-sensorbridge>=0.1.1
+sensirion-i2c-driver>=1.0.0
+sensirion-driver-adapters
+sensirion-i2c-sht
+sensirion-i2c-sen66
+
+# -----------------------------------------------------------------------------
+# MCC USB-1208FS-Plus DAQ driver (requires libuldaq C library, see setup.sh)
+# Used by: zinnwald_sabm_analog
+# -----------------------------------------------------------------------------
+uldaq>=1.2.3
