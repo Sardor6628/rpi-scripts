@@ -209,10 +209,12 @@ def update():
         voltage_label.config(text=f"Voltage: {data['voltage']:.4f} V")
         status_label.config(text=f"Status: {sensor_status}")
 
-        if sensor_status == "OK":
-            color, label = h2_theme(data["h2_ppm"])
-        else:
+        if sensor_status in ("FAULT (below error band / disconnected)",
+                             "ERROR / WAKE-UP",
+                             "OVER-RANGE (H2 above upper limit)"):
             color, label = COLOR_NA, sensor_status.upper()
+        else:
+            color, label = h2_theme(data["h2_ppm"])
 
         set_color(color)
         quality.config(text=label)
