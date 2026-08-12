@@ -107,55 +107,28 @@ title = tk.Label(
 )
 title.pack()
 
-h2_value = tk.Label(
+level = tk.Label(
     frame,
     text="--",
-    font=("Arial", 130, "bold"),
+    font=("Arial", 96, "bold"),
     fg="white",
     bg=background,
 )
-h2_value.pack()
+level.pack(pady=(30, 0))
 
-h2_unit = tk.Label(
+level_caption = tk.Label(
     frame,
-    text="ppm",
-    font=("Arial", 28),
+    text="H₂ Level",
+    font=("Arial", 26),
     fg="white",
     bg=background,
 )
-h2_unit.pack()
-
-quality = tk.Label(
-    frame,
-    text="--",
-    font=("Arial", 42, "bold"),
-    fg="white",
-    bg=background,
-)
-quality.pack(pady=10)
-
-volpct_value = tk.Label(
-    frame,
-    text="--",
-    font=("Arial", 40, "bold"),
-    fg="white",
-    bg=background,
-)
-volpct_value.pack(pady=(10, 0))
-
-volpct_unit = tk.Label(
-    frame,
-    text="vol %",
-    font=("Arial", 22),
-    fg="white",
-    bg=background,
-)
-volpct_unit.pack()
+level_caption.pack(pady=(0, 20))
 
 voltage_label = tk.Label(
     frame,
-    text="Voltage: --",
-    font=("Arial", 22),
+    text="Signal: --",
+    font=("Arial", 20),
     fg="white",
     bg=background,
 )
@@ -164,7 +137,7 @@ voltage_label.pack(pady=(20, 0))
 status_label = tk.Label(
     frame,
     text="Status: --",
-    font=("Arial", 22),
+    font=("Arial", 20),
     fg="white",
     bg=background,
 )
@@ -186,11 +159,8 @@ def set_color(color):
 
     widgets = (
         title,
-        h2_value,
-        h2_unit,
-        quality,
-        volpct_value,
-        volpct_unit,
+        level,
+        level_caption,
         voltage_label,
         status_label,
         clock,
@@ -204,9 +174,7 @@ def update():
     data, sensor_status = read_sensor()
 
     if data is not None:
-        h2_value.config(text=f"{data['h2_ppm']:.0f}")
-        volpct_value.config(text=f"{data['h2_vol_percent']:.3f}")
-        voltage_label.config(text=f"Voltage: {data['voltage']:.4f} V")
+        voltage_label.config(text=f"Signal: {data['voltage']:.3f} V")
         status_label.config(text=f"Status: {sensor_status}")
 
         if sensor_status in ("FAULT (below error band / disconnected)",
@@ -217,14 +185,12 @@ def update():
             color, label = h2_theme(data["h2_ppm"])
 
         set_color(color)
-        quality.config(text=label)
+        level.config(text=label)
     else:
-        h2_value.config(text="--")
-        volpct_value.config(text="--")
-        voltage_label.config(text="Voltage: --")
+        voltage_label.config(text="Signal: --")
         status_label.config(text=f"Status: {sensor_status}")
         set_color(COLOR_NA)
-        quality.config(text="NO DATA")
+        level.config(text="NO DATA")
 
     clock.config(text=time.strftime("%H:%M:%S"))
     root.after(1000, update)
