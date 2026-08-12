@@ -34,12 +34,13 @@ def signal_handler(sig, frame):
 signal.signal(signal.SIGINT, signal_handler)
 signal.signal(signal.SIGTERM, signal_handler)
 
-# Voltage thresholds for display coloring (adjust for your sensor's expected range)
-VOLTAGE_THRESHOLDS = [
-    (1.0, "green"),
-    (3.0, "yellow"),
-    (7.0, "red"),
-    (float("inf"), "bold red"),
+# H2 concentration thresholds for status coloring (ppm).
+# Baseline clean air is < 200 ppm; hydrogen LEL is ~4 vol% = 40000 ppm.
+H2_THRESHOLDS = [
+    (2000, "green"),        # < 0.2 vol% : normal
+    (10000, "yellow"),      # < 1 vol%   : elevated
+    (40000, "red"),         # < 4 vol%   : high (approaching LEL)
+    (float("inf"), "bold red"),  # >= LEL
 ]
 
 
@@ -57,66 +58,65 @@ def build_dashboard(data, label, history, uptime_start):
         Layout(name="body"),
         Layout(name="footer", size=3),
     )
+    layout["body"].split_row(
+        Layout(name="left", ratio=2),
+        Layout(name="right", ratio=1),
+    )
 
     # Header
-    uptime = datetime.now() - uptime_start
-    hours, remainder = divmod(int(uptime.total_seconds()), 3600)
-    minutes, seconds = divmod(remainder, 60)
+    uptime = str(datetime.now() - uptime_start).split(".")[0]
     header_text = Text(
-        f"  Zinnwald SABM - {label}  |  Uptime: {hours:02d}:{minutes:02d}:{seconds:02d}  |  "
-        f"{datetime.now():%Y-%m-%d %H:%M:%S}",
+        f"  Zinnwald SABM (H₂) - {label}  |  Uptime: {uptime}  |  {datetime.now():%Y-%m-%d %H:%M:%S}",
         style="bold white on blue",
     )
     layout["header"].update(Panel(header_text, style="blue"))
 
-    # Body: left = current reading, right = history
-    layout["body"].split_row(
-        Layout(name="current", ratio=1),
-        Layout(name="history", ratio=2),
-    )
-
-    # Current reading table
-    table = Table(title="Current Reading", expand=True)
-    table.add_column("Parameter", style="cyan", width=14)
-    table.add_column("Value", justify="right", width=14)
-    table.add_column("Unit", width=6)
+    # Main sensor table
+    table = Table(title="Current Readings", expand=True)
+    table.add_column("Parameter", style="cyan", width=20)
+    table.add_column("Value", justify="right", width=12)
+    table.add_column("Unit", width=10)
+    table.add_column("Status", width=10)
 
     if data:
-        v_color = get_color(abs(data["voltage"]), VOLTAGE_THRESHOLDS)
+        h2_color = get_color(data["h2_ppm"], H2_THRESHOLDS)
         status_color = "green" if data["status"] == "OK" else "yellow"
-        table.add_row("Channel", str(data["channel"]), "")
-        table.add_row("Voltage", f"[{v_color}]{data['voltage']:.6f}[/]", "V")
-        table.add_row("H2", f"[{v_color}]{data['h2_ppm']:.1f}[/]", "ppm")
-        table.add_row("H2", f"[{v_color}]{data['h2_vol_percent']:.3f}[/]", "vol%")
-        table.add_row("Status", f"[{status_color}]{data['status']}[/]", "")
+
+        table.add_row("Channel", str(data["channel"]), "", "")
+        table.add_row("Voltage", f"{data['voltage']:.4f}", "V", "")
+        table.add_row("", "", "", "")
+        table.add_row("H₂", f"[{h2_color}]{data['h2_ppm']:.1f}[/]", "ppm",
+                      f"[{h2_color}]●[/]")
+        table.add_row("H₂", f"[{h2_color}]{data['h2_vol_percent']:.3f}[/]", "vol%", "")
+        table.add_row("", "", "", "")
+        table.add_row("Sensor Status", f"[{status_color}]{data['status']}[/]", "", "")
     else:
-        table.add_row("Channel", "—", "")
-        table.add_row("Voltage", "—", "V")
-        table.add_row("H2", "—", "ppm")
-        table.add_row("Status", "—", "")
+        table.add_row("Waiting for data...", "", "", "")
 
-    layout["current"].update(Panel(table))
+    layout["left"].update(Panel(table))
 
-    # History table
-    hist_table = Table(title=f"Last {len(history)} Readings", expand=True)
-    hist_table.add_column("Time", style="dim", width=10)
-    hist_table.add_column("Voltage [V]", justify="right", width=12)
-    hist_table.add_column("H2 [ppm]", justify="right", width=12)
+    # History panel (last 10 readings)
+    history_table = Table(title="H₂ History", expand=True)
+    history_table.add_column("Time", style="dim", width=8)
+    history_table.add_column("H₂ [ppm]", justify="right", width=10)
+    history_table.add_column("V", justify="right", width=8)
 
-    for ts, h_data in list(history)[-20:]:
-        v_color = get_color(abs(h_data["voltage"]), VOLTAGE_THRESHOLDS)
-        hist_table.add_row(
-            f"{ts:%H:%M:%S}",
-            f"[{v_color}]{h_data['voltage']:.6f}[/]",
-            f"[{v_color}]{h_data['h2_ppm']:.1f}[/]",
+    for ts, h_data in list(history)[-10:]:
+        h2_c = get_color(h_data["h2_ppm"], H2_THRESHOLDS)
+        history_table.add_row(
+            ts.strftime("%H:%M:%S"),
+            f"[{h2_c}]{h_data['h2_ppm']:.1f}[/]",
+            f"{h_data['voltage']:.3f}",
         )
 
-    layout["history"].update(Panel(hist_table))
+    layout["right"].update(Panel(history_table))
 
     # Footer
-    layout["footer"].update(
-        Panel(Text("  Press Ctrl+C to stop", style="dim"), style="dim")
+    footer_text = Text(
+        "  Press Ctrl+C to stop  |  ● Normal  ● Elevated  ● High (LEL)",
+        style="dim",
     )
+    layout["footer"].update(Panel(footer_text))
 
     return layout
 
