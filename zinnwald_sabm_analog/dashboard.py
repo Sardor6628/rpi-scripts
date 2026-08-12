@@ -1,125 +1,24 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Rich terminal dashboard for Zinnwald SABM analog sensor.
-Displays real-time voltage readings from MCC USB-1208FS-Plus DAQ.
+Fullscreen dashboard for the Zinnwald SABM analog H2 sensor (kumgang-style GUI).
+
+Reads the Pos.3 wake-up channel (MOX) via MCC USB-1208FS-Plus DAQ and shows the
+H2 concentration as large numbers with a color-coded background.
 
 Usage:
-    python dashboard.py [--channel 0] [--label Zinnwald] [--interval 1]
+    python dashboard.py [--channel 0] [--label Zinnwald] [--range bip10v]
 """
 import argparse
-import signal
-import sys
+import tkinter as tk
 import time
-from collections import deque
-from datetime import datetime
-
-from rich.console import Console
-from rich.layout import Layout
-from rich.live import Live
-from rich.panel import Panel
-from rich.table import Table
-from rich.text import Text
 
 from zinnwald_reader import ZinnwaldSensorDAQ
 from uldaq import AiInputMode, Range
 
-running = True
-
-
-def signal_handler(sig, frame):
-    global running
-    running = False
-
-
-signal.signal(signal.SIGINT, signal_handler)
-signal.signal(signal.SIGTERM, signal_handler)
-
-# H2 concentration thresholds for status coloring (ppm).
-# Baseline clean air is < 200 ppm; hydrogen LEL is ~4 vol% = 40000 ppm.
-H2_THRESHOLDS = [
-    (2000, "green"),        # < 0.2 vol% : normal
-    (10000, "yellow"),      # < 1 vol%   : elevated
-    (40000, "red"),         # < 4 vol%   : high (approaching LEL)
-    (float("inf"), "bold red"),  # >= LEL
-]
-
-
-def get_color(value, thresholds):
-    for limit, color in thresholds:
-        if value < limit:
-            return color
-    return "white"
-
-
-def build_dashboard(data, label, history, uptime_start):
-    layout = Layout()
-    layout.split_column(
-        Layout(name="header", size=3),
-        Layout(name="body"),
-        Layout(name="footer", size=3),
-    )
-    layout["body"].split_row(
-        Layout(name="left", ratio=2),
-        Layout(name="right", ratio=1),
-    )
-
-    # Header
-    uptime = str(datetime.now() - uptime_start).split(".")[0]
-    header_text = Text(
-        f"  Zinnwald SABM (H₂) - {label}  |  Uptime: {uptime}  |  {datetime.now():%Y-%m-%d %H:%M:%S}",
-        style="bold white on blue",
-    )
-    layout["header"].update(Panel(header_text, style="blue"))
-
-    # Main sensor table
-    table = Table(title="Current Readings", expand=True)
-    table.add_column("Parameter", style="cyan", width=20)
-    table.add_column("Value", justify="right", width=12)
-    table.add_column("Unit", width=10)
-    table.add_column("Status", width=10)
-
-    if data:
-        h2_color = get_color(data["h2_ppm"], H2_THRESHOLDS)
-        status_color = "green" if data["status"] == "OK" else "yellow"
-
-        table.add_row("Channel", str(data["channel"]), "", "")
-        table.add_row("Voltage", f"{data['voltage']:.4f}", "V", "")
-        table.add_row("", "", "", "")
-        table.add_row("H₂", f"[{h2_color}]{data['h2_ppm']:.1f}[/]", "ppm",
-                      f"[{h2_color}]●[/]")
-        table.add_row("H₂", f"[{h2_color}]{data['h2_vol_percent']:.3f}[/]", "vol%", "")
-        table.add_row("", "", "", "")
-        table.add_row("Sensor Status", f"[{status_color}]{data['status']}[/]", "", "")
-    else:
-        table.add_row("Waiting for data...", "", "", "")
-
-    layout["left"].update(Panel(table))
-
-    # History panel (last 10 readings)
-    history_table = Table(title="H₂ History", expand=True)
-    history_table.add_column("Time", style="dim", width=8)
-    history_table.add_column("H₂ [ppm]", justify="right", width=10)
-    history_table.add_column("V", justify="right", width=8)
-
-    for ts, h_data in list(history)[-10:]:
-        h2_c = get_color(h_data["h2_ppm"], H2_THRESHOLDS)
-        history_table.add_row(
-            ts.strftime("%H:%M:%S"),
-            f"[{h2_c}]{h_data['h2_ppm']:.1f}[/]",
-            f"{h_data['voltage']:.3f}",
-        )
-
-    layout["right"].update(Panel(history_table))
-
-    # Footer
-    footer_text = Text(
-        "  Press Ctrl+C to stop  |  ● Normal  ● Elevated  ● High (LEL)",
-        style="dim",
-    )
-    layout["footer"].update(Panel(footer_text))
-
-    return layout
-
+# --------------------------
+# ARGS / SENSOR
+# --------------------------
 
 RANGE_MAP = {
     "bip10v": Range.BIP10VOLTS,
@@ -130,58 +29,210 @@ RANGE_MAP = {
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Zinnwald SABM sensor dashboard")
+    parser = argparse.ArgumentParser(description="Zinnwald SABM H2 fullscreen dashboard")
     parser.add_argument("--channel", type=int, default=0, help="Analog input channel (0-7)")
     parser.add_argument(
-        "--mode",
-        choices=["se", "diff"],
-        default="se",
+        "--mode", choices=["se", "diff"], default="se",
         help="Input mode: se=single-ended, diff=differential",
     )
     parser.add_argument(
-        "--range",
-        choices=["bip10v", "bip5v", "bip2v", "bip1v"],
-        default="bip10v",
-        help="Voltage range",
+        "--range", choices=list(RANGE_MAP), default="bip10v", help="Voltage range",
     )
     parser.add_argument("--label", default="Zinnwald", help="Measurement label")
-    parser.add_argument("--interval", type=float, default=1.0, help="Sampling interval in seconds")
     return parser.parse_args()
 
 
-def main():
-    args = parse_args()
-    console = Console()
+args = parse_args()
+input_mode = AiInputMode.SINGLE_ENDED if args.mode == "se" else AiInputMode.DIFFERENTIAL
 
-    input_mode = AiInputMode.SINGLE_ENDED if args.mode == "se" else AiInputMode.DIFFERENTIAL
-    voltage_range = RANGE_MAP[args.range]
-
-    history = deque(maxlen=50)
-    uptime_start = datetime.now()
-
-    with ZinnwaldSensorDAQ(
-        channel=args.channel,
-        input_mode=input_mode,
-        voltage_range=voltage_range,
-    ) as sensor:
-        time.sleep(0.5)
-        with Live(
-            build_dashboard(None, args.label, history, uptime_start),
-            refresh_per_second=2,
-            console=console,
-        ) as live:
-            while running:
-                try:
-                    data = sensor.read_data()
-                    history.append((datetime.now(), data))
-                    live.update(build_dashboard(data, args.label, history, uptime_start))
-                    time.sleep(args.interval)
-                except Exception as e:
-                    console.print(f"[red]Read error: {e}[/red]")
-                    time.sleep(1)
-
-    console.print("\n[yellow]Measurement stopped.[/yellow]")
+sensor = ZinnwaldSensorDAQ(
+    channel=args.channel,
+    input_mode=input_mode,
+    voltage_range=RANGE_MAP[args.range],
+)
+sensor.connect()
+time.sleep(0.5)
 
 
-if __name__ == "__main__":
-    main()
+def read_sensor():
+    try:
+        data = sensor.read_data()
+        return data, data["status"]
+    except Exception as e:
+        print(e)
+        return None, "Error"
+
+
+# --------------------------
+# H2 color / label
+# --------------------------
+
+# H2 thresholds in ppm (baseline clean air < 200 ppm, hydrogen LEL ~4 vol% = 40000 ppm)
+THRESHOLDS = [
+    (2000, "#2ecc71", "NORMAL"),       # < 0.2 vol%
+    (10000, "#f1c40f", "ELEVATED"),    # < 1 vol%
+    (40000, "#e67e22", "HIGH"),        # < 4 vol% (approaching LEL)
+    (float("inf"), "#e74c3c", "DANGER (LEL)"),
+]
+COLOR_NA = "#7f8c8d"
+
+
+def h2_theme(ppm):
+    for limit, color, label in THRESHOLDS:
+        if ppm < limit:
+            return color, label
+    return "#e74c3c", "DANGER (LEL)"
+
+
+# --------------------------
+# GUI
+# --------------------------
+
+root = tk.Tk()
+root.title("Zinnwald SABM - H2")
+root.attributes("-fullscreen", True)
+
+background = "#2ecc71"
+root.configure(bg=background)
+
+frame = tk.Frame(root, bg=background)
+frame.place(relx=0.5, rely=0.5, anchor="center")
+
+title = tk.Label(
+    frame,
+    text=f"Hydrogen (H₂) - {args.label}",
+    font=("Arial", 34, "bold"),
+    fg="white",
+    bg=background,
+)
+title.pack()
+
+h2_value = tk.Label(
+    frame,
+    text="--",
+    font=("Arial", 130, "bold"),
+    fg="white",
+    bg=background,
+)
+h2_value.pack()
+
+h2_unit = tk.Label(
+    frame,
+    text="ppm",
+    font=("Arial", 28),
+    fg="white",
+    bg=background,
+)
+h2_unit.pack()
+
+quality = tk.Label(
+    frame,
+    text="--",
+    font=("Arial", 42, "bold"),
+    fg="white",
+    bg=background,
+)
+quality.pack(pady=10)
+
+volpct_value = tk.Label(
+    frame,
+    text="--",
+    font=("Arial", 40, "bold"),
+    fg="white",
+    bg=background,
+)
+volpct_value.pack(pady=(10, 0))
+
+volpct_unit = tk.Label(
+    frame,
+    text="vol %",
+    font=("Arial", 22),
+    fg="white",
+    bg=background,
+)
+volpct_unit.pack()
+
+voltage_label = tk.Label(
+    frame,
+    text="Voltage: --",
+    font=("Arial", 22),
+    fg="white",
+    bg=background,
+)
+voltage_label.pack(pady=(20, 0))
+
+status_label = tk.Label(
+    frame,
+    text="Status: --",
+    font=("Arial", 22),
+    fg="white",
+    bg=background,
+)
+status_label.pack(pady=4)
+
+clock = tk.Label(
+    frame,
+    text="",
+    font=("Arial", 18),
+    fg="white",
+    bg=background,
+)
+clock.pack(pady=10)
+
+
+def set_color(color):
+    root.configure(bg=color)
+    frame.configure(bg=color)
+
+    widgets = (
+        title,
+        h2_value,
+        h2_unit,
+        quality,
+        volpct_value,
+        volpct_unit,
+        voltage_label,
+        status_label,
+        clock,
+    )
+
+    for widget in widgets:
+        widget.configure(bg=color)
+
+
+def update():
+    data, sensor_status = read_sensor()
+
+    if data is not None:
+        h2_value.config(text=f"{data['h2_ppm']:.0f}")
+        volpct_value.config(text=f"{data['h2_vol_percent']:.3f}")
+        voltage_label.config(text=f"Voltage: {data['voltage']:.4f} V")
+        status_label.config(text=f"Status: {sensor_status}")
+
+        if sensor_status == "OK":
+            color, label = h2_theme(data["h2_ppm"])
+        else:
+            color, label = COLOR_NA, sensor_status.upper()
+
+        set_color(color)
+        quality.config(text=label)
+    else:
+        h2_value.config(text="--")
+        volpct_value.config(text="--")
+        voltage_label.config(text="Voltage: --")
+        status_label.config(text=f"Status: {sensor_status}")
+        set_color(COLOR_NA)
+        quality.config(text="NO DATA")
+
+    clock.config(text=time.strftime("%H:%M:%S"))
+    root.after(1000, update)
+
+
+root.bind("<Escape>", lambda e: root.destroy())
+
+update()
+
+try:
+    root.mainloop()
+finally:
+    sensor.close()
