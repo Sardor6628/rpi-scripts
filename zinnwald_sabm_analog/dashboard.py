@@ -83,24 +83,32 @@ def build_dashboard(data, label, history, uptime_start):
 
     if data:
         v_color = get_color(abs(data["voltage"]), VOLTAGE_THRESHOLDS)
+        status_color = "green" if data["status"] == "OK" else "yellow"
         table.add_row("Channel", str(data["channel"]), "")
         table.add_row("Voltage", f"[{v_color}]{data['voltage']:.6f}[/]", "V")
+        table.add_row("H2", f"[{v_color}]{data['h2_ppm']:.1f}[/]", "ppm")
+        table.add_row("H2", f"[{v_color}]{data['h2_vol_percent']:.3f}[/]", "vol%")
+        table.add_row("Status", f"[{status_color}]{data['status']}[/]", "")
     else:
         table.add_row("Channel", "—", "")
         table.add_row("Voltage", "—", "V")
+        table.add_row("H2", "—", "ppm")
+        table.add_row("Status", "—", "")
 
     layout["current"].update(Panel(table))
 
     # History table
     hist_table = Table(title=f"Last {len(history)} Readings", expand=True)
     hist_table.add_column("Time", style="dim", width=10)
-    hist_table.add_column("Voltage [V]", justify="right", width=14)
+    hist_table.add_column("Voltage [V]", justify="right", width=12)
+    hist_table.add_column("H2 [ppm]", justify="right", width=12)
 
     for ts, h_data in list(history)[-20:]:
         v_color = get_color(abs(h_data["voltage"]), VOLTAGE_THRESHOLDS)
         hist_table.add_row(
             f"{ts:%H:%M:%S}",
             f"[{v_color}]{h_data['voltage']:.6f}[/]",
+            f"[{v_color}]{h_data['h2_ppm']:.1f}[/]",
         )
 
     layout["history"].update(Panel(hist_table))

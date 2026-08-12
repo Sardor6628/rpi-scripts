@@ -17,6 +17,50 @@ from uldaq import (
 logger = logging.getLogger(__name__)
 
 
+# --- Pos. 3 = pin ANA_1(TrA): Wake-up channel (MOX sensor), target gas H2 ---
+# Analog output voltage vs. H2 concentration (datasheet 2F0_907_637, Table 1):
+#   0.5 V -> < 200 ppm H2 (clean-air baseline)
+#   2.5 V -> 2 vol%  H2
+#   4.5 V -> >= 12 vol% H2
+# The response is non-linear, so we interpolate piecewise between these points.
+H2_CURVE = [(0.5, 0.0), (2.5, 2.0), (4.5, 12.0)]  # (volts, vol% H2)
+
+
+def voltage_to_h2_vol_percent(voltage):
+    """Convert Pos.3 wake-up-channel output voltage to H2 concentration [vol%]."""
+    if voltage <= H2_CURVE[0][0]:
+        return 0.0
+    if voltage >= H2_CURVE[-1][0]:
+        # Extrapolate along the last segment (>= 12 vol%)
+        (v0, c0), (v1, c1) = H2_CURVE[-2], H2_CURVE[-1]
+        return c1 + (voltage - v1) * (c1 - c0) / (v1 - v0)
+    for (v0, c0), (v1, c1) in zip(H2_CURVE, H2_CURVE[1:]):
+        if v0 <= voltage <= v1:
+            return c0 + (voltage - v0) * (c1 - c0) / (v1 - v0)
+    return 0.0
+
+
+def sensor_status(voltage):
+    """Human-readable status for the wake-up channel output voltage.
+
+    Based on datasheet section 1.3 (error signaling) and Table 4 (voltage levels):
+      < 0.25 V        fault / sensor disconnected
+      0.25 .. 0.45 V  lower error band (0.35 V during wake-up)
+      0.45 .. 0.519 V settling toward the lower measurement limit
+      0.519 .. 4.5 V  valid measurement
+      > 4.5 V         over-range (H2 above upper measurement limit)
+    """
+    if voltage < 0.25:
+        return "FAULT (below error band / disconnected)"
+    if voltage <= 0.45:
+        return "ERROR / WAKE-UP"
+    if voltage < 0.519:
+        return "settling (near lower limit)"
+    if voltage <= 4.5:
+        return "OK"
+    return "OVER-RANGE (H2 above upper limit)"
+
+
 class ZinnwaldSensorDAQ:
     """Reads Zinnwald SABM analog sensor data through MCC USB-1208FS-Plus."""
 
@@ -61,17 +105,21 @@ class ZinnwaldSensorDAQ:
 
     def read_data(self):
         """
-        Read analog voltage from the Zinnwald sensor.
+        Read analog voltage from the Zinnwald sensor and derive H2 concentration.
 
         Returns:
-            dict with keys: voltage, channel
+            dict with keys: voltage, channel, h2_vol_percent, h2_ppm, status
         """
         voltage = self._ai_device.a_in(
             self.channel, self.input_mode, self.voltage_range, AInFlag.DEFAULT
         )
+        h2_vol_percent = voltage_to_h2_vol_percent(voltage)
         return {
             "voltage": voltage,
             "channel": self.channel,
+            "h2_vol_percent": h2_vol_percent,
+            "h2_ppm": h2_vol_percent * 10000.0,
+            "status": sensor_status(voltage),
         }
 
     def close(self):
