@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import time
-from uldaq import get_daq_device_inventory, DaqDevice, InterfaceType, AiInputMode, Range
+from uldaq import get_daq_device_inventory, DaqDevice, InterfaceType, AiInputMode, Range, AInFlag
 
 devices = get_daq_device_inventory(InterfaceType.ANY)
 
@@ -21,7 +21,7 @@ print("Reading Zinnwald analog output...")
 
 try:
     while True:
-        voltage = ai_device.a_in(channel, input_mode, ai_range)
+        voltage = ai_device.a_in(channel, input_mode, ai_range, AInFlag.DEFAULT)
 
         print(f"Voltage: {voltage:.3f} V")
 
