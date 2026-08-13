@@ -67,7 +67,7 @@ def read_sensor():
 # H2 color / label
 # --------------------------
 
-# H2 thresholds in ppm (baseline clean air < 200 ppm, hydrogen LEL ~4 vol% = 40000 ppm)
+# H2 thresholds in ppm (baseline normal air < 200 ppm, hydrogen LEL ~4 vol% = 40000 ppm)
 THRESHOLDS = [
     (2000, "#2ecc71", "NORMAL"),       # < 0.2 vol%
     (10000, "#f1c40f", "ELEVATED"),    # < 1 vol%
@@ -168,7 +168,7 @@ def update():
         status_label.config(text=f"Status: {sensor_status}")
 
         if sensor_status in ("FAULT (below error band / disconnected)",
-                             "ERROR / WAKE-UP",
+                             "ERROR",
                              "OVER-RANGE (H2 above upper limit)"):
             color, label = COLOR_NA, sensor_status.upper()
         else:

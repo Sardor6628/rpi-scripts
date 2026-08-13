@@ -9,10 +9,10 @@
 # Relative path (from the repo root) of the dashboard for the selected DEVICE.
 sw_device_relpath() {
     case "${DEVICE:-}" in
-        eagle)    echo "Eagle_SADP3-LY2/eagle_dashboard.py" ;;
-        kumgang)  echo "kumgang2/kumgang2_dashboard.py" ;;
-        mikeno)   echo "Mikeno_SACD4_LSH_A4/mikeno_dashboard.py" ;;
-        pm_halla) echo "PM_Halla/pm_dashboard.py" ;;
+        eagle)    echo "Eagle_SADP3-LY2/dashboard.py" ;;
+        kumgang)  echo "kumgang2/dashboard.py" ;;
+        mikeno)   echo "Mikeno_SACD4_LSH_A4/dashboard.py" ;;
+        pm_halla) echo "PM_Halla/dashboard.py" ;;
         sen66)    echo "sen66_sensorbridge/dashboard.py" ;;
         zinnwald) echo "zinnwald_sabm_analog/dashboard.py" ;;
         *)        return 1 ;;

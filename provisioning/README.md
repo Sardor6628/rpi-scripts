@@ -11,10 +11,10 @@ Set `DEVICE` in `sensorwall.conf` to one of:
 
 | `DEVICE`   | Folder                  | Dashboard                    | Interface        |
 |------------|-------------------------|------------------------------|------------------|
-| `eagle`    | `Eagle_SADP3-LY2`       | `eagle_dashboard.py`         | UART `/dev/serial0` |
-| `kumgang`  | `kumgang2`              | `kumgang2_dashboard.py`      | USB SensorBridge |
-| `mikeno`   | `Mikeno_SACD4_LSH_A4`   | `mikeno_dashboard.py`        | UART `/dev/serial0` |
-| `pm_halla` | `PM_Halla`              | `pm_dashboard.py`            | UART `/dev/serial0` |
+| `eagle`    | `Eagle_SADP3-LY2`       | `dashboard.py`               | UART `/dev/serial0` |
+| `kumgang`  | `kumgang2`              | `dashboard.py`               | USB SensorBridge |
+| `mikeno`   | `Mikeno_SACD4_LSH_A4`   | `dashboard.py`               | UART `/dev/serial0` |
+| `pm_halla` | `PM_Halla`              | `dashboard.py`               | UART `/dev/serial0` |
 | `sen66`    | `sen66_sensorbridge`    | `dashboard.py`               | USB SensorBridge |
 | `zinnwald` | `zinnwald_sabm_analog`  | `dashboard.py`               | MCC USB DAQ      |
 
