@@ -84,6 +84,9 @@ def decode_slave(rx):
     defect  = get_bits(v, 37, 1)
     rt_raw  = get_bits(v, 40, 16)
 
+    # Per datasheet D3 sec 3.6, on the SACD side Gradient and Luftdruck are
+    # "Not used" and Laufzeit is only the previous parking-session duration.
+    # They are decoded for diagnostics but not printed.
     co2_ppm = None if co2_raw in (1022, 1023) else co2_raw * 100
     grad_v  = None if grad in (1022, 1023) else grad * 100 - 50000
     p_mbar  = None if press in (1021, 1022, 1023) else press + 400
@@ -126,13 +129,10 @@ try:
         ts = datetime.now().strftime("%H:%M:%S")
         if data:
             co2 = "N/A" if data["co2_ppm"] is None else f"{data['co2_ppm']} ppm"
-            grad = "N/A" if data["gradient"] is None else str(data["gradient"])
-            p = "N/A" if data["press_mbar"] is None else f"{data['press_mbar']} mbar"
-            rt = "N/A" if data["runtime_s"] is None else f"{data['runtime_s']} s"
+            kpa = "N/A" if data["co2_ppm"] is None else f"{data['co2_ppm'] / 10000:.2f} kPa"
             print(
-                f"{ts}  CO2={co2}  Alarm={data['alarm']}  "
-                f"Grad={grad}  P={p}  RT={rt}  "
-                f"Def={data['defect']}  RE={data['resp_err']}"
+                f"{ts}  CO2={co2} ({kpa})  Alarm={data['alarm']}  "
+                f"BZ={data['bz']}  Def={data['defect']}  RE={data['resp_err']}"
             )
         else:
             print(f"{ts}  no valid frame  raw={rx!r}")

@@ -86,6 +86,9 @@ def decode_slave(rx):
     defect  = get_bits(v, 37, 1)
     rt_raw  = get_bits(v, 40, 16)
 
+    # Per datasheet D3 sec 3.6, on the SACD side Gradient and Luftdruck are
+    # "Not used" and Laufzeit is only the previous parking-session duration.
+    # They are decoded for diagnostics but not displayed.
     co2_ppm = None if co2_raw in (1022, 1023) else co2_raw * 100
     grad_v  = None if grad in (1022, 1023) else grad * 100 - 50000
     p_mbar  = None if press in (1021, 1022, 1023) else press + 400
@@ -146,7 +149,7 @@ quality.pack(pady=10)
 status = tk.Label(frame, text="Alarm: --", font=("Arial", 22), fg="white", bg=bg)
 status.pack()
 
-details = tk.Label(frame, text="P: --  RT: --  Grad: --", font=("Arial", 20), fg="white", bg=bg)
+details = tk.Label(frame, text="pCO2: -- kPa", font=("Arial", 20), fg="white", bg=bg)
 details.pack()
 
 errors = tk.Label(frame, text="Def: --  RE: --  BZ: --", font=("Arial", 18), fg="white", bg=bg)
@@ -177,15 +180,13 @@ def update():
     if data and ppm is not None:
         value.config(text=str(ppm))
         status.config(text=f"Alarm: {data['alarm']}")
-        p = "--" if data["press_mbar"] is None else f"{data['press_mbar']} mbar"
-        rt = "--" if data["runtime_s"] is None else f"{data['runtime_s']} s"
-        grad = "--" if data["gradient"] is None else str(data["gradient"])
-        details.config(text=f"P: {p}  RT: {rt}  Grad: {grad}")
+        # 100 ppm == 0.01 kPa partial pressure (datasheet D3 / Sensirion).
+        details.config(text=f"pCO2: {ppm / 10000:.2f} kPa")
         errors.config(text=f"Def: {data['defect']}  RE: {data['resp_err']}  BZ: {data['bz']}")
     else:
         value.config(text="--")
         status.config(text="Alarm: --")
-        details.config(text="P: --  RT: --  Grad: --")
+        details.config(text="pCO2: -- kPa")
         errors.config(text="Def: --  RE: --  BZ: --")
 
     root.after(500, update)
