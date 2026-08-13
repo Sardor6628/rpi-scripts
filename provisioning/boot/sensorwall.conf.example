@@ -1,0 +1,56 @@
+# =============================================================================
+# Sensor Wall configuration
+#
+# Copy this file onto the Raspberry Pi BOOT partition as:
+#     sensorwall.conf
+# (the boot partition is the small FAT32 volume that is visible in Windows /
+#  macOS Explorer right after flashing).
+#
+# Every value below can be edited later directly on the boot partition; a
+# reboot re-applies them (see README.md).
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Which sensor this Raspberry Pi runs. One of:
+#     eagle | kumgang | mikeno | pm_halla | sen66 | zinnwald
+# -----------------------------------------------------------------------------
+DEVICE=zinnwald
+
+# Human-readable label shown on the fullscreen dashboard.
+DEVICE_LABEL=Zinnwald_Wall
+
+# Hostname to assign to this Pi (leave empty to keep the flashed default).
+HOSTNAME=sask-sensor-wall-01
+
+# Desktop/login user that owns the graphical session.
+# Leave empty to auto-detect the uid-1000 user created while flashing.
+SYSTEM_USER=sask
+
+# -----------------------------------------------------------------------------
+# WiFi credentials (applied on first boot via NetworkManager)
+# -----------------------------------------------------------------------------
+WIFI_SSID=YourNetwork
+WIFI_PSK=YourPassword
+# 2-letter regulatory country code (e.g. DE, US, GB).
+WIFI_COUNTRY=DE
+
+# -----------------------------------------------------------------------------
+# Git repository that holds the sensor scripts (this repo).
+# -----------------------------------------------------------------------------
+GIT_REMOTE=https://github.com/YOURORG/rpi-scripts.git
+GIT_BRANCH=main
+
+# Enable SSH on first boot (1 = yes, 0 = no).
+ENABLE_SSH=1
+
+# -----------------------------------------------------------------------------
+# Optional per-device overrides (safe to leave as-is)
+# -----------------------------------------------------------------------------
+# sen66:
+SEN66_PORT=/dev/ttyUSB0
+SEN66_BRIDGE_PORT=1
+
+# zinnwald:
+ZINNWALD_CHANNEL=0
+ZINNWALD_RANGE=bip10v
+ZINNWALD_MODE=se
