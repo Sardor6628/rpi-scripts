@@ -146,16 +146,7 @@ unit.pack()
 quality = tk.Label(frame, text="--", font=("Arial", 42, "bold"), fg="white", bg=bg)
 quality.pack(pady=10)
 
-status = tk.Label(frame, text="Alarm: --", font=("Arial", 22), fg="white", bg=bg)
-status.pack()
-
-details = tk.Label(frame, text="pCO2: -- kPa", font=("Arial", 20), fg="white", bg=bg)
-details.pack()
-
-errors = tk.Label(frame, text="Def: --  RE: --  BZ: --", font=("Arial", 18), fg="white", bg=bg)
-errors.pack()
-
-widgets = (frame, title, value, unit, quality, status, details, errors)
+widgets = (frame, title, value, unit, quality)
 
 
 def set_color(color):
@@ -179,15 +170,8 @@ def update():
 
     if data and ppm is not None:
         value.config(text=str(ppm))
-        status.config(text=f"Alarm: {data['alarm']}")
-        # 100 ppm == 0.01 kPa partial pressure (datasheet D3 / Sensirion).
-        details.config(text=f"pCO2: {ppm / 10000:.2f} kPa")
-        errors.config(text=f"Def: {data['defect']}  RE: {data['resp_err']}  BZ: {data['bz']}")
     else:
         value.config(text="--")
-        status.config(text="Alarm: --")
-        details.config(text="pCO2: -- kPa")
-        errors.config(text="Def: --  RE: --  BZ: --")
 
     root.after(500, update)
 
