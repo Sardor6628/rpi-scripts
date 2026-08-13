@@ -89,7 +89,7 @@ frame.place(relx=0.5, rely=0.5, anchor="center")
 
 title = tk.Label(
     frame,
-    text="Temperature / Humidity",
+    text="SAAF4-ITHI",
     font=("Arial", 34, "bold"),
     fg="white",
     bg=background
@@ -168,15 +168,6 @@ status_label = tk.Label(
 )
 status_label.pack(pady=10)
 
-clock = tk.Label(
-    frame,
-    text="",
-    font=("Arial", 18),
-    fg="white",
-    bg=background
-)
-clock.pack(pady=10)
-
 
 def set_color(color):
     root.configure(bg=color)
@@ -191,8 +182,7 @@ def set_color(color):
         tws_label,
         tws_value,
         tws_unit,
-        status_label,
-        clock
+        status_label
     )
 
     for widget in widgets:
@@ -222,7 +212,6 @@ def update():
         tws_value.config(text="--")
         status_label.config(text=f"Status: {sensor_status}")
 
-    clock.config(text=time.strftime("%H:%M:%S"))
     root.after(1000, update)
 
 

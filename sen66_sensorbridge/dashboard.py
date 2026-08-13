@@ -86,7 +86,7 @@ container.place(relx=0.5, rely=0.5, anchor="center")
 
 title_lbl = tk.Label(
     container,
-    text=f"SEN66 Air Quality - {args.label}",
+    text="SEN66",
     font=("Arial", 30, "bold"),
     fg="white", bg=BG,
 )
@@ -130,16 +130,8 @@ status_lbl = tk.Label(
 )
 status_lbl.grid(row=4, column=0, columnspan=3)
 
-clock_lbl = tk.Label(
-    container,
-    text="",
-    font=("Arial", 18),
-    fg="white", bg=BG,
-)
-clock_lbl.grid(row=5, column=0, columnspan=3, pady=8)
-
 ALL_WIDGETS = [
-    container, title_lbl, quality_lbl, status_lbl, clock_lbl,
+    container, title_lbl, quality_lbl, status_lbl,
     pm25_f, pm25_t, pm25_v, pm25_u,
     co2_f,  co2_t,  co2_v,  co2_u,
     voc_f,  voc_t,  voc_v,  voc_u,
@@ -176,7 +168,6 @@ def update():
             v.config(text="--")
         status_lbl.config(text="Status: No Data")
 
-    clock_lbl.config(text=time.strftime("%H:%M:%S"))
     root.after(1000, update)
 
 

@@ -131,7 +131,7 @@ root.configure(bg=bg)
 frame = tk.Frame(root, bg=bg)
 frame.place(relx=0.5, rely=0.5, anchor="center")
 
-title = tk.Label(frame, text="CO2", font=("Arial", 34, "bold"), fg="white", bg=bg)
+title = tk.Label(frame, text="SACD4x", font=("Arial", 34, "bold"), fg="white", bg=bg)
 title.pack()
 
 value = tk.Label(frame, text="--", font=("Arial", 140, "bold"), fg="white", bg=bg)
@@ -152,10 +152,7 @@ details.pack()
 errors = tk.Label(frame, text="Def: --  RE: --  BZ: --", font=("Arial", 18), fg="white", bg=bg)
 errors.pack()
 
-clock = tk.Label(frame, text="", font=("Arial", 18), fg="white", bg=bg)
-clock.pack(pady=10)
-
-widgets = (frame, title, value, unit, quality, status, details, errors, clock)
+widgets = (frame, title, value, unit, quality, status, details, errors)
 
 
 def set_color(color):
@@ -191,7 +188,6 @@ def update():
         details.config(text="P: --  RT: --  Grad: --")
         errors.config(text="Def: --  RE: --  BZ: --")
 
-    clock.config(text=time.strftime("%H:%M:%S"))
     root.after(500, update)
 
 

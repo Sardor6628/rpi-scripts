@@ -103,7 +103,7 @@ container.place(relx=0.5, rely=0.5, anchor="center")
 
 title_lbl = tk.Label(
     container,
-    text="SADP3-LY2",
+    text="SADP3",
     font=("Arial", 30, "bold"),
     fg="white", bg=BG,
 )
@@ -142,16 +142,8 @@ status_lbl = tk.Label(
 )
 status_lbl.grid(row=3, column=0, columnspan=3)
 
-clock_lbl = tk.Label(
-    container,
-    text="",
-    font=("Arial", 18),
-    fg="white", bg=BG,
-)
-clock_lbl.grid(row=4, column=0, columnspan=3, pady=8)
-
 ALL_WIDGETS = [
-    container, title_lbl, quality_lbl, status_lbl, clock_lbl,
+    container, title_lbl, quality_lbl, status_lbl,
     t_frame,  t_title,  t_val,  t_unit,
     rh_frame, rh_title, rh_val, rh_unit,
     dp_frame, dp_title, dp_val, dp_unit,
@@ -182,7 +174,6 @@ def update():
             v.config(text="--")
         status_lbl.config(text="Status: --")
 
-    clock_lbl.config(text=time.strftime("%H:%M:%S"))
     root.after(1000, update)
 
 root.bind("<Escape>", lambda e: root.destroy())

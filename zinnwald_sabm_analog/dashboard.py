@@ -100,7 +100,7 @@ frame.place(relx=0.5, rely=0.5, anchor="center")
 
 title = tk.Label(
     frame,
-    text=f"Hydrogen (H₂) - {args.label}",
+    text="SABM",
     font=("Arial", 34, "bold"),
     fg="white",
     bg=background,
@@ -143,15 +143,6 @@ status_label = tk.Label(
 )
 status_label.pack(pady=4)
 
-clock = tk.Label(
-    frame,
-    text="",
-    font=("Arial", 18),
-    fg="white",
-    bg=background,
-)
-clock.pack(pady=10)
-
 
 def set_color(color):
     root.configure(bg=color)
@@ -163,7 +154,6 @@ def set_color(color):
         level_caption,
         voltage_label,
         status_label,
-        clock,
     )
 
     for widget in widgets:
@@ -192,7 +182,6 @@ def update():
         set_color(COLOR_NA)
         level.config(text="NO DATA")
 
-    clock.config(text=time.strftime("%H:%M:%S"))
     root.after(1000, update)
 
 
