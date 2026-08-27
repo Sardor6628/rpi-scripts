@@ -12,7 +12,7 @@ from collections import deque
 
 try:
     import matplotlib
-    matplotlib.use("Agg", force=True)
+    matplotlib.use("TkAgg", force=True)
     import matplotlib.pyplot as plt
 except ModuleNotFoundError as exc:
     raise SystemExit(
@@ -21,9 +21,10 @@ except ModuleNotFoundError as exc:
     ) from exc
 except ImportError as exc:
     raise SystemExit(
-        "matplotlib is unavailable in this environment.\n"
-        "Try: pip install --upgrade matplotlib pillow\n"
-        "or reinstall the project requirements."
+        f"Cannot load the TkAgg GUI backend: {exc}\n"
+        "Install the GUI dependencies with:\n"
+        "  sudo apt-get install -y python3-tk\n"
+        "  pip install --upgrade matplotlib pillow"
     ) from exc
 
 from zinnwald_reader import ZinnwaldSensorDAQ
@@ -101,6 +102,9 @@ def main():
     ax.set_ylabel("H2 [ppm]")
     ax.grid(True, alpha=0.4)
 
+    plt.ion()
+    plt.show(block=False)
+
     def draw():
         if not samples:
             ax.set_ylim(0, 1)
@@ -122,16 +126,17 @@ def main():
         ymin = 0 if min(values) <= 0 else max(0.0, min(values) * 0.9)
         ymax = max(values) * 1.15 if max(values) > 0 else 100.0
         ax.set_ylim(ymin, ymax)
-        ax.set_xlim(min(times), max(times))
+        if min(times) != max(times):
+            ax.set_xlim(min(times), max(times))
         fig.autofmt_xdate()
         fig.canvas.draw_idle()
 
     try:
-        while True:
+        while plt.fignum_exists(fig.number):
             data = sensor.read_data()
             samples.append((time.time(), float(data["h2_ppm"])))
             draw()
-            time.sleep(args.interval)
+            plt.pause(args.interval)
     except KeyboardInterrupt:
         print("\nStop requested. Closing plot.")
     finally:
