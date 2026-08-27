@@ -36,3 +36,4 @@ uldaq>=1.2.3
 # Used by: zinnwald_sabm_analog/plot_h2_history.py
 # -----------------------------------------------------------------------------
 matplotlib>=3.7.0
+pillow>=10.0.0

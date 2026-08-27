@@ -12,12 +12,21 @@ from collections import deque
 
 try:
     import matplotlib
-    matplotlib.use("TkAgg")
+    try:
+        matplotlib.use("TkAgg")
+    except Exception:
+        matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 except ModuleNotFoundError as exc:
     raise SystemExit(
         "matplotlib is not installed. Install it with: pip install matplotlib\n"
         "Or reinstall the project environment with: pip install -r requirements.txt"
+    ) from exc
+except ImportError as exc:
+    raise SystemExit(
+        "matplotlib/Tk backend is unavailable in this environment.\n"
+        "Try: pip install --upgrade matplotlib pillow\n"
+        "or run with a headless backend by installing the project requirements."
     ) from exc
 
 from zinnwald_reader import ZinnwaldSensorDAQ
@@ -85,7 +94,10 @@ def main():
 
     plt.style.use("seaborn-v0_8-whitegrid")
     fig, ax = plt.subplots(figsize=(11, 6))
-    fig.canvas.manager.set_window_title("Zinnwald SABM H2 Trend")
+    try:
+        fig.canvas.manager.set_window_title("Zinnwald SABM H2 Trend")
+    except Exception:
+        pass
     line, = ax.plot([], [], color="tab:green", linewidth=2, marker="o", markersize=3)
     ax.set_title(f"Zinnwald H2 trend (last {args.duration:.1f} min)")
     ax.set_xlabel("Time")
