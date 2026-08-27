@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Live H2 trend chart for the Zinnwald SABM analog sensor.
+"""Live voltage trend chart for the Zinnwald SABM analog sensor.
 
-Shows the last N minutes of H2 readings as a line chart. Default window is 3
-minutes, and the duration can be increased from the command line.
+Shows the last N minutes of the Pos.3 wake-up channel output voltage as a line
+chart. Default window is 3 minutes, and the duration can be changed from the
+command line.
 """
 import argparse
 import datetime as dt
@@ -41,7 +42,7 @@ RANGE_MAP = {
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Plot the last N minutes of Zinnwald SABM H2 readings."
+        description="Plot the last N minutes of Zinnwald SABM sensor voltage."
     )
     parser.add_argument(
         "--duration",
@@ -77,7 +78,7 @@ def parse_args():
         "--ymax",
         type=float,
         default=3.0,
-        help="Fixed upper limit of the H2 axis (default: 3.0). "
+        help="Fixed upper limit of the voltage axis in volts (default: 3.0). "
              "The axis grows automatically if a reading exceeds it.",
     )
     return parser.parse_args()
@@ -101,13 +102,13 @@ def main():
     plt.style.use("seaborn-v0_8-whitegrid")
     fig, ax = plt.subplots(figsize=(11, 6))
     try:
-        fig.canvas.manager.set_window_title("Zinnwald SABM H2 Trend")
+        fig.canvas.manager.set_window_title("Zinnwald SABM Voltage Trend")
     except Exception:
         pass
     line, = ax.plot([], [], color="tab:green", linewidth=2, marker="o", markersize=3)
-    ax.set_title(f"Zinnwald H2 trend (last {args.duration:.1f} min)")
+    ax.set_title(f"Zinnwald voltage trend (last {args.duration:.1f} min)")
     ax.set_xlabel("Time")
-    ax.set_ylabel("H2 [ppm]")
+    ax.set_ylabel("Signal [V]")
     ax.set_ylim(0, args.ymax)
     ax.grid(True, alpha=0.4)
 
@@ -140,7 +141,7 @@ def main():
     try:
         while plt.fignum_exists(fig.number):
             data = sensor.read_data()
-            samples.append((time.time(), float(data["h2_ppm"])))
+            samples.append((time.time(), float(data["voltage"])))
             draw()
             plt.pause(args.interval)
     except KeyboardInterrupt:
