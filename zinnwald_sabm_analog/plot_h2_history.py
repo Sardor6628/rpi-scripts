@@ -12,10 +12,7 @@ from collections import deque
 
 try:
     import matplotlib
-    try:
-        matplotlib.use("TkAgg")
-    except Exception:
-        matplotlib.use("Agg")
+    matplotlib.use("Agg", force=True)
     import matplotlib.pyplot as plt
 except ModuleNotFoundError as exc:
     raise SystemExit(
@@ -24,9 +21,9 @@ except ModuleNotFoundError as exc:
     ) from exc
 except ImportError as exc:
     raise SystemExit(
-        "matplotlib/Tk backend is unavailable in this environment.\n"
+        "matplotlib is unavailable in this environment.\n"
         "Try: pip install --upgrade matplotlib pillow\n"
-        "or run with a headless backend by installing the project requirements."
+        "or reinstall the project requirements."
     ) from exc
 
 from zinnwald_reader import ZinnwaldSensorDAQ
