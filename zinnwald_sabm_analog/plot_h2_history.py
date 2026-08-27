@@ -72,6 +72,13 @@ def parse_args():
         default="bip10v",
         help="Voltage range",
     )
+    parser.add_argument(
+        "--ymax",
+        type=float,
+        default=3.0,
+        help="Fixed upper limit of the H2 axis (default: 3.0). "
+             "The axis grows automatically if a reading exceeds it.",
+    )
     return parser.parse_args()
 
 
@@ -100,6 +107,7 @@ def main():
     ax.set_title(f"Zinnwald H2 trend (last {args.duration:.1f} min)")
     ax.set_xlabel("Time")
     ax.set_ylabel("H2 [ppm]")
+    ax.set_ylim(0, args.ymax)
     ax.grid(True, alpha=0.4)
 
     plt.ion()
@@ -107,8 +115,7 @@ def main():
 
     def draw():
         if not samples:
-            ax.set_ylim(0, 1)
-            ax.set_xlim(0, 1)
+            ax.set_ylim(0, args.ymax)
             fig.canvas.draw_idle()
             return
 
@@ -119,13 +126,8 @@ def main():
         line.set_xdata(times)
         line.set_ydata(values)
 
-        ax.set_title(f"Zinnwald H2 trend (last {args.duration:.1f} min)")
-        ax.set_xlabel("Time")
-        ax.set_ylabel("H2 [ppm]")
-
-        ymin = 0 if min(values) <= 0 else max(0.0, min(values) * 0.9)
-        ymax = max(values) * 1.15 if max(values) > 0 else 100.0
-        ax.set_ylim(ymin, ymax)
+        ymax = args.ymax if max(values) <= args.ymax else max(values) * 1.15
+        ax.set_ylim(0, ymax)
         if min(times) != max(times):
             ax.set_xlim(min(times), max(times))
         fig.autofmt_xdate()
