@@ -31,6 +31,8 @@ logger = logging.getLogger(__name__)
 LOWER_MEAS_LIMIT_V = 0.59
 H2_CURVE = [(LOWER_MEAS_LIMIT_V, 0.0), (2.5, 2.0), (4.5, 12.0)]  # (volts, vol% H2)
 FLOATING_INPUT_SPREAD_V = 0.25
+FLOATING_INPUT_VOLTAGE_MIN_V = 1.20
+FLOATING_INPUT_VOLTAGE_MAX_V = 1.80
 
 
 def voltage_to_h2_vol_percent(voltage):
@@ -57,11 +59,14 @@ def sensor_status(voltage, sample_spread=None):
       0.59 .. 4.5 V    valid measurement
       > 4.5 V          over-range (H2 above upper measurement limit)
 
-    A floating or disconnected analog input often reads as a believable midrange
-    voltage but fluctuates wildly between samples. Catch that case explicitly so
-    it is not displayed as a valid H2 reading.
+    Real hardware behavior here is a bit different: a floating/open input can sit
+    in the 1.2..1.6 V range and look like a believable H2 value, while the valid
+    connected baseline sits around 0.45..0.50 V. Treat that open-circuit band as
+    a fault even when the sample spread is small.
     """
     if sample_spread is not None and sample_spread > FLOATING_INPUT_SPREAD_V:
+        return "FAULT (floating input / disconnected)"
+    if FLOATING_INPUT_VOLTAGE_MIN_V <= voltage <= FLOATING_INPUT_VOLTAGE_MAX_V:
         return "FAULT (floating input / disconnected)"
     if voltage < 0.25:
         return "FAULT (below error band / disconnected)"
@@ -77,9 +82,12 @@ def sensor_status(voltage, sample_spread=None):
 def is_floating_input(sample_spread, voltage=None):
     """Return True when an analog input is unconnected/floating.
 
-    A floating input often shows large sample-to-sample variation while the mean
-    voltage sits in a range that would otherwise look like a valid gas reading.
+    On this hardware, a floating/open input often sits around 1.2..1.6 V rather
+    than in the valid connected baseline around 0.45..0.50 V. The sample spread and
+    the voltage band are both checked to catch disconnected signals reliably.
     """
+    if voltage is not None and FLOATING_INPUT_VOLTAGE_MIN_V <= voltage <= FLOATING_INPUT_VOLTAGE_MAX_V:
+        return True
     return sample_spread is not None and sample_spread > FLOATING_INPUT_SPREAD_V
 
 
@@ -145,7 +153,7 @@ class ZinnwaldSensorDAQ:
         voltage = sum(samples) / len(samples)
         sample_spread = max(samples) - min(samples)
         status = sensor_status(voltage, sample_spread=sample_spread)
-        if is_floating_input(sample_spread):
+        if is_floating_input(sample_spread, voltage):
             voltage = 0.0
             h2_vol_percent = 0.0
         else:
