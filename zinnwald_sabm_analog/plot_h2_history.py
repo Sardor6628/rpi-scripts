@@ -10,10 +10,15 @@ import datetime as dt
 import time
 from collections import deque
 
-import matplotlib
-
-matplotlib.use("TkAgg")
-import matplotlib.pyplot as plt
+try:
+    import matplotlib
+    matplotlib.use("TkAgg")
+    import matplotlib.pyplot as plt
+except ModuleNotFoundError as exc:
+    raise SystemExit(
+        "matplotlib is not installed. Install it with: pip install matplotlib\n"
+        "Or reinstall the project environment with: pip install -r requirements.txt"
+    ) from exc
 
 from zinnwald_reader import ZinnwaldSensorDAQ
 from uldaq import AiInputMode, Range

@@ -30,3 +30,9 @@ sensirion-i2c-sen66
 # Used by: zinnwald_sabm_analog
 # -----------------------------------------------------------------------------
 uldaq>=1.2.3
+
+# -----------------------------------------------------------------------------
+# Plotting for live sensor history charts
+# Used by: zinnwald_sabm_analog/plot_h2_history.py
+# -----------------------------------------------------------------------------
+matplotlib>=3.7.0
