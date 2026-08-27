@@ -13,6 +13,7 @@ from collections import deque
 try:
     import matplotlib
     matplotlib.use("TkAgg", force=True)
+    import matplotlib.dates as mdates
     import matplotlib.pyplot as plt
 except ModuleNotFoundError as exc:
     raise SystemExit(
@@ -110,27 +111,30 @@ def main():
     ax.set_ylim(0, args.ymax)
     ax.grid(True, alpha=0.4)
 
+    # The line starts empty, so matplotlib does not know the x data are dates.
+    # Register the date unit explicitly, otherwise the axis renders raw floats.
+    ax.xaxis_date()
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M:%S"))
+    fig.autofmt_xdate()
+
     plt.ion()
     plt.show(block=False)
 
     def draw():
+        now = dt.datetime.now()
+        ax.set_xlim(now - dt.timedelta(seconds=window_seconds), now)
+
         if not samples:
             ax.set_ylim(0, args.ymax)
             fig.canvas.draw_idle()
             return
 
-        timestamps = [ts for ts, _ in samples]
+        times = [dt.datetime.fromtimestamp(ts) for ts, _ in samples]
         values = [value for _, value in samples]
-
-        times = [dt.datetime.fromtimestamp(ts) for ts in timestamps]
-        line.set_xdata(times)
-        line.set_ydata(values)
+        line.set_data(times, values)
 
         ymax = args.ymax if max(values) <= args.ymax else max(values) * 1.15
         ax.set_ylim(0, ymax)
-        if min(times) != max(times):
-            ax.set_xlim(min(times), max(times))
-        fig.autofmt_xdate()
         fig.canvas.draw_idle()
 
     try:
