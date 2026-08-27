@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 # it to 0, which avoids amplifying 12-bit ADC quantization noise into tens of ppm.
 LOWER_MEAS_LIMIT_V = 0.59
 H2_CURVE = [(LOWER_MEAS_LIMIT_V, 0.0), (2.5, 2.0), (4.5, 12.0)]  # (volts, vol% H2)
+FLOATING_INPUT_SPREAD_V = 0.25
 
 
 def voltage_to_h2_vol_percent(voltage):
@@ -46,7 +47,7 @@ def voltage_to_h2_vol_percent(voltage):
     return 0.0
 
 
-def sensor_status(voltage):
+def sensor_status(voltage, sample_spread=None):
     """Human-readable status for the wake-up channel output voltage.
 
     Based on datasheet section 1.3 (error signaling) and Table 4 (voltage levels):
@@ -55,7 +56,13 @@ def sensor_status(voltage):
       0.45 .. 0.59 V   normal (below the lower measurement limit)
       0.59 .. 4.5 V    valid measurement
       > 4.5 V          over-range (H2 above upper measurement limit)
+
+    A floating or disconnected analog input often reads as a believable midrange
+    voltage but fluctuates wildly between samples. Catch that case explicitly so
+    it is not displayed as a valid H2 reading.
     """
+    if sample_spread is not None and sample_spread > FLOATING_INPUT_SPREAD_V:
+        return "FAULT (floating input / disconnected)"
     if voltage < 0.25:
         return "FAULT (below error band / disconnected)"
     if voltage <= 0.45:
@@ -65,6 +72,15 @@ def sensor_status(voltage):
     if voltage <= 4.5:
         return "OK"
     return "OVER-RANGE (H2 above upper limit)"
+
+
+def is_floating_input(sample_spread, voltage=None):
+    """Return True when an analog input is unconnected/floating.
+
+    A floating input often shows large sample-to-sample variation while the mean
+    voltage sits in a range that would otherwise look like a valid gas reading.
+    """
+    return sample_spread is not None and sample_spread > FLOATING_INPUT_SPREAD_V
 
 
 class ZinnwaldSensorDAQ:
@@ -114,18 +130,33 @@ class ZinnwaldSensorDAQ:
         Read analog voltage from the Zinnwald sensor and derive H2 concentration.
 
         Returns:
-            dict with keys: voltage, channel, h2_vol_percent, h2_ppm, status
+            dict with keys: voltage, channel, h2_vol_percent, h2_ppm, status,
+            sample_spread
         """
-        voltage = self._ai_device.a_in(
-            self.channel, self.input_mode, self.voltage_range, AInFlag.DEFAULT
-        )
-        h2_vol_percent = voltage_to_h2_vol_percent(voltage)
+        samples = []
+        for _ in range(5):
+            samples.append(
+                self._ai_device.a_in(
+                    self.channel, self.input_mode, self.voltage_range, AInFlag.DEFAULT
+                )
+            )
+            time.sleep(0.02)
+
+        voltage = sum(samples) / len(samples)
+        sample_spread = max(samples) - min(samples)
+        status = sensor_status(voltage, sample_spread=sample_spread)
+        if is_floating_input(sample_spread):
+            voltage = 0.0
+            h2_vol_percent = 0.0
+        else:
+            h2_vol_percent = voltage_to_h2_vol_percent(voltage)
         return {
             "voltage": voltage,
             "channel": self.channel,
             "h2_vol_percent": h2_vol_percent,
             "h2_ppm": h2_vol_percent * 10000.0,
-            "status": sensor_status(voltage),
+            "status": status,
+            "sample_spread": sample_spread,
         }
 
     def close(self):
