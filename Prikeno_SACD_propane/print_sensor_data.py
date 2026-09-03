@@ -148,9 +148,10 @@ try:
             t = "N/A" if data["temp_c"] is None else f"{data['temp_c']:.1f}C"
             rh = "N/A" if data["hum_pct"] is None else f"{data['hum_pct']:.1f}%"
             p = "N/A" if data["press_mbar"] is None else f"{data['press_mbar']} mbar"
+            # Tcav/RHcav are inside the self-heated measuring cavity, not ambient.
             print(
                 f"{ts}  C3H8={gas} ({lel})  Alarm={data['alarm']}  "
-                f"T={t}  RH={rh}  P={p}  "
+                f"Tcav={t}  RHcav={rh}  P={p}  "
                 f"FC={data['counter']}  ST={data['self_test_error']}  RE={data['resp_err']}"
             )
         else:
