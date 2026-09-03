@@ -3,7 +3,8 @@
 # Launches the dashboard for the configured DEVICE inside the desktop session.
 #
 # Started automatically at login by the autostart entry that provision.sh
-# installs. Restarts the dashboard if it exits (e.g. sensor unplugged).
+# installs. Respawns the dashboard if it crashes (e.g. sensor unplugged), but
+# stays down once you close it yourself.
 # =============================================================================
 set -uo pipefail
 
@@ -28,6 +29,13 @@ while true; do
     # shellcheck disable=SC2086
     python "$REL" $ARGS
     code=$?
+    # 0 = Escape/window close, 130 = Ctrl-C, 143 = SIGTERM: all deliberate.
+    case "$code" in
+        0|130|143)
+            sw_log "dashboard closed (code $code); not restarting"
+            exit 0
+            ;;
+    esac
     sw_log "dashboard exited (code $code); restarting in 5s"
     sleep 5
 done
