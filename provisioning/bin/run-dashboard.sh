@@ -16,6 +16,14 @@ source "$DIR/../lib/device-registry.sh"
 
 sw_load_config || exit 1
 
+# The desktop may fire several autostart hooks (XDG + wayfire + labwc). Two
+# dashboards would fight over the same serial port, so only let one through.
+exec 9>"/tmp/sensorwall-dashboard.lock"
+if ! flock -n 9; then
+    sw_log "another dashboard instance is already running; exiting"
+    exit 0
+fi
+
 REPO="$(sw_repo_dir)"
 REL="$(sw_device_relpath)" || { sw_log "unknown DEVICE='${DEVICE:-}'"; exit 1; }
 ARGS="$(sw_device_args)"
