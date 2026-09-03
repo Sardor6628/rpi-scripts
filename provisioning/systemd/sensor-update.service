@@ -6,7 +6,7 @@ Before=graphical.target
 
 [Service]
 Type=oneshot
-ExecStart=__RUN_UPDATE__
+ExecStart=/bin/bash __RUN_UPDATE__
 RemainAfterExit=no
 
 [Install]

@@ -47,6 +47,7 @@ systemctl daemon-reload
 systemctl enable sensor-update.service || true
 
 # 6. Autostart the dashboard in the desktop session.
-sw_install_autostart "$USER_NAME" "$PROV/bin/run-dashboard.sh"
+chmod +x "$PROV/bin/run-dashboard.sh" "$PROV/bin/update-check.sh" || true
+sw_install_autostart "$USER_NAME" "/bin/bash $PROV/bin/run-dashboard.sh"
 
 sw_log "provisioning complete"

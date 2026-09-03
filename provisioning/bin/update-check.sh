@@ -53,4 +53,4 @@ fi
 # ----------------------------------------------------------------------------
 # Always re-apply the dashboard autostart from the current config.
 # ----------------------------------------------------------------------------
-sw_install_autostart "$USER_NAME" "$PROV/bin/run-dashboard.sh"
+sw_install_autostart "$USER_NAME" "/bin/bash $PROV/bin/run-dashboard.sh"
