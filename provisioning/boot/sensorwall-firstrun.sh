@@ -46,11 +46,14 @@ if grep -q "sensorwall-firstrun.sh" /proc/cmdline 2>/dev/null; then
 fi
 echo "mode: $([ "$STANDALONE" = 1 ] && echo standalone || echo chained)"
 
-# Load configuration.
+# Load configuration (stripping CR, since it is usually edited on Windows).
+CONF_TMP="$(mktemp)"
+tr -d '\r' < "$CONF" > "$CONF_TMP"
 set -a
 # shellcheck disable=SC1090
-source "$CONF"
+source "$CONF_TMP"
 set +a
+rm -f "$CONF_TMP"
 
 # ---- Determine the desktop user -------------------------------------------
 if [ -z "${SYSTEM_USER:-}" ]; then

@@ -30,10 +30,15 @@ sw_load_config() {
         sw_log "config not found: $conf"
         return 1
     fi
+    # The config is usually edited on Windows, so strip CR before sourcing.
+    local tmp
+    tmp="$(mktemp)"
+    tr -d '\r' < "$conf" > "$tmp"
     set -a
     # shellcheck disable=SC1090
-    source "$conf"
+    source "$tmp"
     set +a
+    rm -f "$tmp"
 }
 
 # The desktop/login user (explicit SYSTEM_USER or the uid-1000 account).
