@@ -50,11 +50,21 @@ sw_user_home() {
     getent passwd "$1" | cut -d: -f6
 }
 
-# Where the git checkout lives on the Pi.
+# Repo root derived from this file's own location (provisioning/lib/common.sh),
+# so the checkout works under any folder name.
+SW_SELF_REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+# Where the git checkout lives on the Pi. REPO_DIR in sensorwall.conf wins
+# (absolute path, or a folder name relative to the user's home); otherwise the
+# location of this script is used.
 sw_repo_dir() {
     local user
     user="$(sw_system_user)"
-    echo "/home/$user/rpi-scripts"
+    case "${REPO_DIR:-}" in
+        "") echo "$SW_SELF_REPO" ;;
+        /*) echo "$REPO_DIR" ;;
+        *)  echo "/home/$user/$REPO_DIR" ;;
+    esac
 }
 
 # Install the desktop autostart entry that launches the sensor dashboard.

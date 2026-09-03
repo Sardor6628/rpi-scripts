@@ -146,6 +146,10 @@ provisioning/
 - **Force a re-provision:** `sudo rm /var/lib/sensorwall/provisioned`, then
   `sudo bash /boot/firmware/sensorwall-firstrun.sh` (or reboot in Path B).
 - **Update/apply log:** `journalctl -u sensor-update.service`
+- **`repo not found`:** the scripts normally detect the checkout from their own
+  location, so any folder name works. Only the first-boot bootstrap needs
+  `REPO_DIR` in `sensorwall.conf` (folder name relative to the user's home, or
+  an absolute path) because it clones before the repo exists.
 - **Serial permission denied:** confirm the user is in `dialout` and, for UART
   devices, that the serial console is disabled (`raspi-config`).
 - **No SensorBridge:** `ls /dev/ttyUSB*` — adjust `SEN66_PORT` if needed.

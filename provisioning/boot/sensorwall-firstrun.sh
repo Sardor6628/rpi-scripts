@@ -56,7 +56,11 @@ set +a
 if [ -z "${SYSTEM_USER:-}" ]; then
     SYSTEM_USER="$(getent passwd 1000 | cut -d: -f1)"
 fi
-REPO_DIR="/home/$SYSTEM_USER/rpi-scripts"
+REPO_DIR="${REPO_DIR:-rpi-scripts}"
+case "$REPO_DIR" in
+    /*) ;;
+    *) REPO_DIR="/home/$SYSTEM_USER/$REPO_DIR" ;;
+esac
 echo "user=$SYSTEM_USER repo=$REPO_DIR device=${DEVICE:-?}"
 
 # ---- Hostname --------------------------------------------------------------

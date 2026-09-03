@@ -14,10 +14,10 @@
 # Which sensor this Raspberry Pi runs. One of:
 #     eagle | kumgang | mikeno | pm_halla | prikeno | sen66 | zinnwald
 # -----------------------------------------------------------------------------
-DEVICE=zinnwald
+DEVICE=prikeno
 
 # Human-readable label shown on the fullscreen dashboard.
-DEVICE_LABEL=Zinnwald_Wall
+DEVICE_LABEL=Prikeno_Wall
 
 # Hostname to assign to this Pi (leave empty to keep the flashed default).
 HOSTNAME=sask-sensor-wall-01
@@ -39,6 +39,11 @@ WIFI_COUNTRY=DE
 # -----------------------------------------------------------------------------
 GIT_REMOTE=https://github.com/YOURORG/rpi-scripts.git
 GIT_BRANCH=main
+
+# Where the checkout lives on the Pi. Leave empty to use the folder the
+# provisioning scripts are run from (any folder name works). Set it only when
+# the first-boot bootstrap has to clone the repo itself.
+REPO_DIR=
 
 # Enable SSH on first boot (1 = yes, 0 = no).
 ENABLE_SSH=1
