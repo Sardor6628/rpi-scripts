@@ -12,7 +12,7 @@
 
 # -----------------------------------------------------------------------------
 # Which sensor this Raspberry Pi runs. One of:
-#     eagle | kumgang | mikeno | pm_halla | sen66 | zinnwald
+#     eagle | kumgang | mikeno | pm_halla | prikeno | sen66 | zinnwald
 # -----------------------------------------------------------------------------
 DEVICE=zinnwald
 

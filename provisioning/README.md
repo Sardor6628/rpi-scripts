@@ -1,11 +1,11 @@
 # Sensor Wall Provisioning
 
-Fully hands-off setup for the 6 sensor-wall Raspberry Pis. After flashing the OS
+Fully hands-off setup for the sensor-wall Raspberry Pis. After flashing the OS
 you drop **two files** on the boot partition and add **one hook**; on first boot
 the Pi configures itself: WiFi, hostname, SSH, all system + Python dependencies,
 the correct sensor dashboard on the screen, and a git-based update mechanism.
 
-## The 6 devices
+## The 7 devices
 
 Set `DEVICE` in `sensorwall.conf` to one of:
 
@@ -15,6 +15,7 @@ Set `DEVICE` in `sensorwall.conf` to one of:
 | `kumgang`  | `kumgang2`              | `dashboard.py`               | USB SensorBridge |
 | `mikeno`   | `Mikeno_SACD4_LSH_A4`   | `dashboard.py`               | UART `/dev/serial0` |
 | `pm_halla` | `PM_Halla`              | `dashboard.py`               | UART `/dev/serial0` |
+| `prikeno`  | `Prikeno_SACD_propane`  | `dashboard.py`               | UART `/dev/serial0` |
 | `sen66`    | `sen66_sensorbridge`    | `dashboard.py`               | USB SensorBridge |
 | `zinnwald` | `zinnwald_sabm_analog`  | `dashboard.py`               | MCC USB DAQ      |
 

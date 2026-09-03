@@ -7,6 +7,7 @@
 #   - Eagle_SADP3-LY2        (serial)
 #   - Mikeno_SACD4_LSH_A4    (serial)
 #   - PM_Halla               (serial)
+#   - Prikeno_SACD_propane   (serial)
 #   - kumgang2               (Sensirion SHT4x)
 #   - sen66_sensorbridge     (Sensirion SEN66)
 #   - zinnwald_sabm_analog   (MCC USB-1208FS-Plus DAQ / uldaq)

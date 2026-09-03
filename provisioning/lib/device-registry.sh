@@ -13,6 +13,7 @@ sw_device_relpath() {
         kumgang)  echo "kumgang2/dashboard.py" ;;
         mikeno)   echo "Mikeno_SACD4_LSH_A4/dashboard.py" ;;
         pm_halla) echo "PM_Halla/dashboard.py" ;;
+        prikeno)  echo "Prikeno_SACD_propane/dashboard.py" ;;
         sen66)    echo "sen66_sensorbridge/dashboard.py" ;;
         zinnwald) echo "zinnwald_sabm_analog/dashboard.py" ;;
         *)        return 1 ;;
@@ -37,7 +38,7 @@ sw_device_args() {
 # True (exit 0) for devices that talk over the Pi's hardware UART (/dev/serial0).
 sw_device_uses_serial() {
     case "${DEVICE:-}" in
-        eagle|mikeno|pm_halla) return 0 ;;
-        *)                     return 1 ;;
+        eagle|mikeno|pm_halla|prikeno) return 0 ;;
+        *)                             return 1 ;;
     esac
 }

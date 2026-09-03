@@ -9,7 +9,7 @@
 
 # -----------------------------------------------------------------------------
 # Serial communication
-# Used by: Eagle_SADP3-LY2, Mikeno_SACD4_LSH_A4, PM_Halla,
+# Used by: Eagle_SADP3-LY2, Mikeno_SACD4_LSH_A4, PM_Halla, Prikeno_SACD_propane,
 #          Lin_connect.py, master_slave.py, kumgang2
 # -----------------------------------------------------------------------------
 pyserial
