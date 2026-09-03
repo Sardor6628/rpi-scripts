@@ -147,6 +147,10 @@ def quality_color(ppm, alarm):
 root = tk.Tk()
 root.title("Propane – Prikeno")
 root.attributes("-fullscreen", True)
+# XWayland ignores -fullscreen set before the window is mapped, so pin the
+# geometry and re-assert it once the session has placed the window.
+root.geometry(f"{root.winfo_screenwidth()}x{root.winfo_screenheight()}+0+0")
+root.after(500, lambda: root.attributes("-fullscreen", True))
 
 bg = "#2ecc71"
 root.configure(bg=bg)
