@@ -1,6 +1,5 @@
 import tkinter as tk
 import time
-from datetime import datetime
 from glob import glob
 from sensirion_shdlc_driver import ShdlcSerialPort, ShdlcConnection
 from sensirion_shdlc_sensorbridge import (
@@ -220,8 +219,7 @@ def update():
         hum_value.config(text="--")
 
     state_lbl.config(text=caption)
-    status_lbl.config(
-        text=f"{sensor_status}  ·  updated {datetime.now():%H:%M:%S}")
+    status_lbl.config(text=f"Status: {sensor_status}")
     apply_theme(bg, card)
 
     root.after(1000, update)
