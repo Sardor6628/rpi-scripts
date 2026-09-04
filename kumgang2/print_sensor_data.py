@@ -1,5 +1,6 @@
 import math
 import time
+from glob import glob
 from datetime import datetime
 from sensirion_shdlc_driver import ShdlcSerialPort, ShdlcConnection
 from sensirion_shdlc_sensorbridge import (
@@ -10,15 +11,26 @@ from sensirion_shdlc_sensorbridge import (
 from sensirion_i2c_driver import I2cConnection
 from sensirion_i2c_sht.sht4x import Sht4xI2cDevice
 
-SERIAL_PORTS = ['/dev/ttyUSB0', '/dev/ttyUSB1']
 BAUDRATE = 460800
 I2C_FREQ = 100000
 SUPPLY_V = 3.3
 BRIDGE_PORT = SensorBridgePort.ONE
 
 
+def candidate_ports():
+    # The SensorBridge normally enumerates as ttyUSB* (FTDI), but scan ttyACM*
+    # too so a differently-enumerated bridge is still found.
+    return sorted(glob('/dev/ttyUSB*') + glob('/dev/ttyACM*'))
+
+
 def find_bridge():
-    for port in SERIAL_PORTS:
+    ports = candidate_ports()
+    if not ports:
+        print("No /dev/ttyUSB* or /dev/ttyACM* devices present.")
+        print("Check the USB cable and run: lsusb; dmesg | tail -30")
+        return None, None
+
+    for port in ports:
         serial_port = None
         try:
             serial_port = ShdlcSerialPort(port, BAUDRATE)
