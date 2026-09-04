@@ -19,19 +19,29 @@ BRIDGE_PORT = SensorBridgePort.ONE
 
 def find_bridge():
     for port in SERIAL_PORTS:
+        serial_port = None
         try:
             serial_port = ShdlcSerialPort(port, BAUDRATE)
             bridge = SensorBridgeShdlcDevice(
                 ShdlcConnection(serial_port), slave_address=0
             )
+            # Opening the serial port succeeds for any USB device, so query the
+            # firmware version to confirm this really is a SensorBridge.
+            bridge.get_version()
             print(f"SensorBridge found on {port}")
-            return bridge
-        except Exception:
+            return bridge, serial_port
+        except Exception as exc:
+            print(f"  {port}: {exc}")
+            if serial_port is not None:
+                try:
+                    serial_port.close()
+                except Exception:
+                    pass
             continue
-    return None
+    return None, None
 
 
-bridge = find_bridge()
+bridge, serial_port = find_bridge()
 if bridge is None:
     print("ERROR: No SensorBridge found.")
     exit(1)
@@ -56,8 +66,8 @@ def calc_dewpoint(temp_c, rh):
 try:
     while True:
         temp, hum = sensor.single_shot_measurement()
-        t = float(str(temp).split()[0])
-        h = float(str(hum).split()[0])
+        t = temp.degrees_celsius
+        h = hum.percent_rh
         tws = calc_dewpoint(t, h)
         print(
             f"{datetime.now():%H:%M:%S}  "
@@ -69,4 +79,9 @@ try:
 
 except KeyboardInterrupt:
     print("\nStopping...")
-    bridge.switch_supply_off(BRIDGE_PORT)
+
+finally:
+    try:
+        bridge.switch_supply_off(BRIDGE_PORT)
+    finally:
+        serial_port.close()

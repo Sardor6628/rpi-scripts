@@ -82,6 +82,24 @@ if [ ! -f "$UDEV_RULE" ]; then
     echo "Udev rule added. You may need to reconnect the DAQ device."
 fi
 
+# -----------------------------------------------------------------------------
+# 6. udev rule for the Sensirion SensorBridge EKS2 (0403:7168).
+#    Its FTDI chip uses a non-standard product id, so ftdi_sio has to be told
+#    about it explicitly or no /dev/ttyUSB* node is ever created.
+#    Used by kumgang2 and sen66_sensorbridge.
+# -----------------------------------------------------------------------------
+SB_RULE="/etc/udev/rules.d/99-sensirion-sensorbridge.rules"
+if [ ! -f "$SB_RULE" ]; then
+    echo "Adding udev rule for the Sensirion SensorBridge..."
+    sudo tee "$SB_RULE" > /dev/null <<'EOF'
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="0403", ATTR{idProduct}=="7168", RUN+="/bin/sh -c '/sbin/modprobe ftdi_sio; echo 0403 7168 > /sys/bus/usb-serial/drivers/ftdi_sio/new_id'"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="7168", GROUP="dialout", MODE="0660"
+EOF
+    sudo udevadm control --reload-rules
+    sudo udevadm trigger
+    echo "Udev rule added. Reconnect the SensorBridge if it is already plugged in."
+fi
+
 echo ""
 echo "=== Setup complete ==="
 echo "Activate the shared environment with:  source venv/bin/activate"
