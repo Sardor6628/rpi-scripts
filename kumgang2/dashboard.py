@@ -1,6 +1,6 @@
-import math
 import tkinter as tk
 import time
+from datetime import datetime
 from glob import glob
 from sensirion_shdlc_driver import ShdlcSerialPort, ShdlcConnection
 from sensirion_shdlc_sensorbridge import (
@@ -75,24 +75,36 @@ sensor = Sht4xI2cDevice(I2cConnection(i2c_proxy))
 # --------------------------
 
 
-def calc_dewpoint(temp_c, rh):
-    """Magnus formula for dewpoint (TWS)."""
-    a = 17.625
-    b = 243.04
-    alpha = (a * temp_c) / (b + temp_c) + math.log(rh / 100.0)
-    return (b * alpha) / (a - alpha)
-
-
 def read_sensor():
     try:
         temp, hum = sensor.single_shot_measurement()
-        t = temp.degrees_celsius
-        h = hum.percent_rh
-        tws = calc_dewpoint(t, h)
-        return t, h, tws, "Normal"
+        return temp.degrees_celsius, hum.percent_rh, "Normal"
     except Exception as e:
         print(e)
-        return None, None, None, "Error"
+        return None, None, "Error"
+
+
+# --------------------------
+# THEME
+# --------------------------
+
+# (upper temperature bound, background, card background, caption)
+THEMES = [
+    (20, "#2f80c4", "#2670ad", "COOL"),
+    (25, "#27a35c", "#1f8c4e", "COMFORTABLE"),
+    (30, "#d9a406", "#bf9005", "WARM"),
+    (float("inf"), "#d64031", "#bb3527", "HOT"),
+]
+THEME_NA = ("#5d6d7e", "#516070", "NO DATA")
+
+
+def theme_for(temp):
+    if temp is None:
+        return THEME_NA
+    for limit, bg, card, caption in THEMES:
+        if temp <= limit:
+            return bg, card, caption
+    return THEME_NA
 
 
 # --------------------------
@@ -100,139 +112,117 @@ def read_sensor():
 # --------------------------
 
 root = tk.Tk()
-root.title("Kumgang2 - Temperature & Humidity")
+root.title("SAAF3-ITI")
 root.attributes("-fullscreen", True)
+root.config(cursor="none")
 
-background = "#3498db"
-root.configure(bg=background)
+# Scale every font to the actual panel size so the layout fills the screen.
+SCALE = max(0.6, min(root.winfo_screenwidth() / 1280.0, 2.0))
 
-frame = tk.Frame(root, bg=background)
-frame.place(relx=0.5, rely=0.5, anchor="center")
 
-title = tk.Label(
-    frame,
-    text="SAAF4-ITHI",
-    font=("Arial", 34, "bold"),
+def pt(size):
+    return max(8, int(size * SCALE))
+
+
+BG, CARD, _ = THEME_NA
+root.configure(bg=BG)
+
+container = tk.Frame(root, bg=BG)
+container.place(relx=0.5, rely=0.5, anchor="center")
+
+title_lbl = tk.Label(
+    container,
+    text="SAAF3-ITI",
+    font=("DejaVu Sans", pt(34), "bold"),
     fg="white",
-    bg=background
+    bg=BG
 )
-title.pack()
-
-temp_value = tk.Label(
-    frame,
-    text="--",
-    font=("Arial", 100, "bold"),
-    fg="white",
-    bg=background
-)
-temp_value.pack()
-
-temp_unit = tk.Label(
-    frame,
-    text="°C",
-    font=("Arial", 28),
-    fg="white",
-    bg=background
-)
-temp_unit.pack()
-
-hum_value = tk.Label(
-    frame,
-    text="--",
-    font=("Arial", 80, "bold"),
-    fg="white",
-    bg=background
-)
-hum_value.pack(pady=(20, 0))
-
-hum_unit = tk.Label(
-    frame,
-    text="% RH",
-    font=("Arial", 28),
-    fg="white",
-    bg=background
-)
-hum_unit.pack()
-
-tws_label = tk.Label(
-    frame,
-    text="TWS (Windshield)",
-    font=("Arial", 24, "bold"),
-    fg="white",
-    bg=background
-)
-tws_label.pack(pady=(20, 0))
-
-tws_value = tk.Label(
-    frame,
-    text="--",
-    font=("Arial", 60, "bold"),
-    fg="white",
-    bg=background
-)
-tws_value.pack()
-
-tws_unit = tk.Label(
-    frame,
-    text="°C (dewpoint)",
-    font=("Arial", 22),
-    fg="white",
-    bg=background
-)
-tws_unit.pack()
-
-status_label = tk.Label(
-    frame,
-    text="Status: --",
-    font=("Arial", 22),
-    fg="white",
-    bg=background
-)
-status_label.pack(pady=10)
+title_lbl.grid(row=0, column=0, columnspan=2, pady=(0, pt(30)))
 
 
-def set_color(color):
-    root.configure(bg=color)
-    frame.configure(bg=color)
-
-    widgets = (
-        title,
-        temp_value,
-        temp_unit,
-        hum_value,
-        hum_unit,
-        tws_label,
-        tws_value,
-        tws_unit,
-        status_label
+def make_card(label_text, unit_text, col):
+    card = tk.Frame(container, bg=CARD, padx=pt(46), pady=pt(26))
+    card.grid(row=2, column=col, padx=pt(18))
+    caption = tk.Label(
+        card,
+        text=label_text,
+        font=("DejaVu Sans", pt(18), "bold"),
+        fg="#e4ecf3",
+        bg=CARD
     )
+    caption.pack()
+    value = tk.Label(
+        card,
+        text="--",
+        font=("DejaVu Sans", pt(96), "bold"),
+        fg="white",
+        bg=CARD
+    )
+    value.pack()
+    unit = tk.Label(
+        card,
+        text=unit_text,
+        font=("DejaVu Sans", pt(22)),
+        fg="#e4ecf3",
+        bg=CARD
+    )
+    unit.pack()
+    return card, caption, value, unit
 
-    for widget in widgets:
-        widget.configure(bg=color)
+
+temp_card, temp_caption, temp_value, temp_unit = make_card(
+    "TEMPERATURE", "°C", 0)
+hum_card, hum_caption, hum_value, hum_unit = make_card(
+    "HUMIDITY", "% RH", 1)
+
+state_lbl = tk.Label(
+    container,
+    text="--",
+    font=("DejaVu Sans", pt(40), "bold"),
+    fg="white",
+    bg=BG
+)
+state_lbl.grid(row=3, column=0, columnspan=2, pady=(pt(30), 0))
+
+status_lbl = tk.Label(
+    container,
+    text="Status: --",
+    font=("DejaVu Sans", pt(16)),
+    fg="#e4ecf3",
+    bg=BG
+)
+status_lbl.grid(row=4, column=0, columnspan=2, pady=(pt(10), 0))
+
+PAGE_WIDGETS = (container, title_lbl, state_lbl, status_lbl)
+CARD_WIDGETS = (
+    temp_card, temp_caption, temp_value, temp_unit,
+    hum_card, hum_caption, hum_value, hum_unit,
+)
+
+
+def apply_theme(bg, card):
+    root.configure(bg=bg)
+    for widget in PAGE_WIDGETS:
+        widget.configure(bg=bg)
+    for widget in CARD_WIDGETS:
+        widget.configure(bg=card)
 
 
 def update():
-    temp, hum, tws, sensor_status = read_sensor()
+    temp, hum, sensor_status = read_sensor()
+    bg, card, caption = theme_for(temp)
 
     if temp is not None:
         temp_value.config(text=f"{temp:.1f}")
         hum_value.config(text=f"{hum:.1f}")
-        tws_value.config(text=f"{tws:.1f}")
-        status_label.config(text=f"Status: {sensor_status}")
-
-        if temp <= 20:
-            set_color("#3498db")  # Blue - cool
-        elif temp <= 25:
-            set_color("#2ecc71")  # Green - comfortable
-        elif temp <= 30:
-            set_color("#f1c40f")  # Yellow - warm
-        else:
-            set_color("#e74c3c")  # Red - hot
     else:
         temp_value.config(text="--")
         hum_value.config(text="--")
-        tws_value.config(text="--")
-        status_label.config(text=f"Status: {sensor_status}")
+
+    state_lbl.config(text=caption)
+    status_lbl.config(
+        text=f"{sensor_status}  ·  updated {datetime.now():%H:%M:%S}")
+    apply_theme(bg, card)
 
     root.after(1000, update)
 

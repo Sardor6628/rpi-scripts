@@ -1,4 +1,3 @@
-import math
 import time
 from glob import glob
 from datetime import datetime
@@ -67,25 +66,13 @@ i2c_proxy = SensorBridgeI2cProxy(bridge, port=BRIDGE_PORT)
 sensor = Sht4xI2cDevice(I2cConnection(i2c_proxy))
 
 
-def calc_dewpoint(temp_c, rh):
-    """Magnus formula for dewpoint (TWS)."""
-    a = 17.625
-    b = 243.04
-    alpha = (a * temp_c) / (b + temp_c) + math.log(rh / 100.0)
-    return (b * alpha) / (a - alpha)
-
-
 try:
     while True:
         temp, hum = sensor.single_shot_measurement()
-        t = temp.degrees_celsius
-        h = hum.percent_rh
-        tws = calc_dewpoint(t, h)
         print(
             f"{datetime.now():%H:%M:%S}  "
-            f"Temp={t:.2f} °C  "
-            f"Humidity={h:.2f} %RH  "
-            f"TWS={tws:.2f} °C"
+            f"Temp={temp.degrees_celsius:.2f} °C  "
+            f"Humidity={hum.percent_rh:.2f} %RH"
         )
         time.sleep(1)
 
