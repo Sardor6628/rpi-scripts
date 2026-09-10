@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """
 Print SEN66 sensor data to console.
-Supports PM_Halla and Eagle measurement setups via SensorBridge.
+Reads PM, VOC, NOx, CO2, temperature and humidity via SensorBridge.
 
 Usage:
-    python print_sensor_data.py [--port /dev/ttyUSB0] [--label PM_Halla|Eagle] [--interval 1]
+    python print_sensor_data.py [--port /dev/ttyUSB0] [--label SEN66] [--interval 1]
 """
 import argparse
 import logging

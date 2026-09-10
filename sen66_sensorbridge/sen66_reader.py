@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 SEN66 sensor reader via Sensirion SensorBridge.
-Provides a reusable class for PM_Halla and Eagle measurement setups.
+Reusable class for reading PM, VOC, NOx, CO2, temperature and humidity.
 """
 import time
 import logging

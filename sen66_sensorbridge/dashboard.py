@@ -81,9 +81,10 @@ root.title(f"SEN66 - {args.label}")
 root.attributes("-fullscreen", True)
 root.config(cursor="none")
 
-# Scale every font to the actual panel size so the layout fills the screen.
+# Scale every font to the actual panel size. The vertical basis is deliberately
+# larger than the panel so the block never touches the top/bottom edges.
 SCALE = max(0.5, min(root.winfo_screenwidth() / 1280.0,
-                     root.winfo_screenheight() / 800.0, 2.0))
+                     root.winfo_screenheight() / 940.0, 2.0))
 
 
 def pt(size):
@@ -103,16 +104,7 @@ title_lbl = tk.Label(
     fg="white",
     bg=BG,
 )
-title_lbl.grid(row=0, column=0, columnspan=3, pady=(0, pt(4)))
-
-subtitle_lbl = tk.Label(
-    container,
-    text=args.label,
-    font=("DejaVu Sans", pt(18)),
-    fg="#e4ecf3",
-    bg=BG,
-)
-subtitle_lbl.grid(row=1, column=0, columnspan=3, pady=(0, pt(24)))
+title_lbl.grid(row=0, column=0, columnspan=3, pady=(pt(28), pt(24)))
 
 
 def make_card(label_text, unit_text, row, col):
@@ -145,12 +137,12 @@ def make_card(label_text, unit_text, row, col):
     return card, caption, value, unit
 
 
-pm25_card, pm25_caption, pm25_value, pm25_unit = make_card("PM 2.5", "µg/m³", 2, 0)
-co2_card,  co2_caption,  co2_value,  co2_unit  = make_card("CO₂", "ppm", 2, 1)
-voc_card,  voc_caption,  voc_value,  voc_unit  = make_card("VOC", "index", 2, 2)
-temp_card, temp_caption, temp_value, temp_unit = make_card("TEMPERATURE", "°C", 3, 0)
-hum_card,  hum_caption,  hum_value,  hum_unit  = make_card("HUMIDITY", "% RH", 3, 1)
-pm10_card, pm10_caption, pm10_value, pm10_unit = make_card("PM 10", "µg/m³", 3, 2)
+pm25_card, pm25_caption, pm25_value, pm25_unit = make_card("PM 2.5", "µg/m³", 1, 0)
+co2_card,  co2_caption,  co2_value,  co2_unit  = make_card("CO₂", "ppm", 1, 1)
+voc_card,  voc_caption,  voc_value,  voc_unit  = make_card("VOC", "index", 1, 2)
+temp_card, temp_caption, temp_value, temp_unit = make_card("TEMPERATURE", "°C", 2, 0)
+hum_card,  hum_caption,  hum_value,  hum_unit  = make_card("HUMIDITY", "% RH", 2, 1)
+pm10_card, pm10_caption, pm10_value, pm10_unit = make_card("PM 10", "µg/m³", 2, 2)
 
 state_lbl = tk.Label(
     container,
@@ -159,7 +151,7 @@ state_lbl = tk.Label(
     fg="white",
     bg=BG,
 )
-state_lbl.grid(row=4, column=0, columnspan=3, pady=(pt(24), 0))
+state_lbl.grid(row=3, column=0, columnspan=3, pady=(pt(24), 0))
 
 status_lbl = tk.Label(
     container,
@@ -168,9 +160,9 @@ status_lbl = tk.Label(
     fg="#e4ecf3",
     bg=BG,
 )
-status_lbl.grid(row=5, column=0, columnspan=3, pady=(pt(10), 0))
+status_lbl.grid(row=4, column=0, columnspan=3, pady=(pt(10), pt(28)))
 
-PAGE_WIDGETS = (container, title_lbl, subtitle_lbl, state_lbl, status_lbl)
+PAGE_WIDGETS = (container, title_lbl, state_lbl, status_lbl)
 CARD_WIDGETS = (
     pm25_card, pm25_caption, pm25_value, pm25_unit,
     co2_card,  co2_caption,  co2_value,  co2_unit,
