@@ -50,25 +50,26 @@ def read_sensor():
 
 
 # --------------------------
-# Air-quality color / label (driven by PM2.5)
+# THEME (driven by PM2.5)
 # --------------------------
 
-PM25_THRESHOLDS = [
-    (12, "#2ecc71", "GOOD"),
-    (35, "#f1c40f", "MODERATE"),
-    (55, "#e67e22", "UNHEALTHY"),
-    (float("inf"), "#e74c3c", "DANGER"),
+# (upper PM2.5 bound, background, card background, caption)
+THEMES = [
+    (12, "#27a35c", "#1f8c4e", "GOOD"),
+    (35, "#d9a406", "#bf9005", "MODERATE"),
+    (55, "#e07b16", "#c26a11", "UNHEALTHY"),
+    (float("inf"), "#d64031", "#bb3527", "DANGER"),
 ]
-COLOR_NA = "#7f8c8d"
+THEME_NA = ("#5d6d7e", "#516070", "NO DATA")
 
 
-def pm_theme(pm25):
+def theme_for(pm25):
     if pm25 is None:
-        return COLOR_NA, "NO DATA"
-    for limit, color, label in PM25_THRESHOLDS:
+        return THEME_NA
+    for limit, bg, card, caption in THEMES:
         if pm25 < limit:
-            return color, label
-    return "#e74c3c", "DANGER"
+            return bg, card, caption
+    return THEME_NA
 
 
 # --------------------------
@@ -78,8 +79,18 @@ def pm_theme(pm25):
 root = tk.Tk()
 root.title(f"SEN66 - {args.label}")
 root.attributes("-fullscreen", True)
+root.config(cursor="none")
 
-BG = "#2ecc71"
+# Scale every font to the actual panel size so the layout fills the screen.
+SCALE = max(0.5, min(root.winfo_screenwidth() / 1280.0,
+                     root.winfo_screenheight() / 800.0, 2.0))
+
+
+def pt(size):
+    return max(8, int(size * SCALE))
+
+
+BG, CARD, _ = THEME_NA
 root.configure(bg=BG)
 
 container = tk.Frame(root, bg=BG)
@@ -87,87 +98,119 @@ container.place(relx=0.5, rely=0.5, anchor="center")
 
 title_lbl = tk.Label(
     container,
-    text="SEN66",
-    font=("Arial", 30, "bold"),
-    fg="white", bg=BG,
+    text=args.label,
+    font=("DejaVu Sans", pt(34), "bold"),
+    fg="white",
+    bg=BG,
 )
-title_lbl.grid(row=0, column=0, columnspan=3, pady=(0, 24))
+title_lbl.grid(row=0, column=0, columnspan=3, pady=(0, pt(4)))
+
+subtitle_lbl = tk.Label(
+    container,
+    text="SEN66 AIR QUALITY",
+    font=("DejaVu Sans", pt(14)),
+    fg="#e4ecf3",
+    bg=BG,
+)
+subtitle_lbl.grid(row=1, column=0, columnspan=3, pady=(0, pt(26)))
 
 
-def make_col(parent, label_text, unit_text, row, col):
-    f = tk.Frame(parent, bg=BG, padx=30)
-    f.grid(row=row, column=col, padx=20, pady=10)
-    lbl = tk.Label(f, text=label_text, font=("Arial", 20, "bold"), fg="white", bg=BG)
-    lbl.pack()
-    val = tk.Label(f, text="--", font=("Arial", 72, "bold"), fg="white", bg=BG)
-    val.pack()
-    unt = tk.Label(f, text=unit_text, font=("Arial", 18), fg="white", bg=BG)
-    unt.pack()
-    return f, lbl, val, unt
+def make_card(label_text, unit_text, row, col):
+    card = tk.Frame(container, bg=CARD, padx=pt(28), pady=pt(18))
+    card.grid(row=row, column=col, padx=pt(12), pady=pt(10), sticky="nsew")
+    caption = tk.Label(
+        card,
+        text=label_text,
+        font=("DejaVu Sans", pt(16), "bold"),
+        fg="#e4ecf3",
+        bg=CARD,
+    )
+    caption.pack()
+    value = tk.Label(
+        card,
+        text="--",
+        font=("DejaVu Sans", pt(58), "bold"),
+        fg="white",
+        bg=CARD,
+    )
+    value.pack()
+    unit = tk.Label(
+        card,
+        text=unit_text,
+        font=("DejaVu Sans", pt(16)),
+        fg="#e4ecf3",
+        bg=CARD,
+    )
+    unit.pack()
+    return card, caption, value, unit
 
-# Row 1: PM2.5, CO2, VOC
-pm25_f, pm25_t, pm25_v, pm25_u = make_col(container, "PM 2.5", "µg/m³", 1, 0)
-co2_f,  co2_t,  co2_v,  co2_u  = make_col(container, "CO₂",    "ppm",   1, 1)
-voc_f,  voc_t,  voc_v,  voc_u  = make_col(container, "VOC",    "index", 1, 2)
 
-# Row 2: Temperature, Humidity, PM10
-temp_f, temp_t, temp_v, temp_u = make_col(container, "Temperature", "°C",    2, 0)
-hum_f,  hum_t,  hum_v,  hum_u  = make_col(container, "Humidity",    "%RH",   2, 1)
-pm10_f, pm10_t, pm10_v, pm10_u = make_col(container, "PM 10",       "µg/m³", 2, 2)
+pm25_card, pm25_caption, pm25_value, pm25_unit = make_card("PM 2.5", "µg/m³", 2, 0)
+co2_card,  co2_caption,  co2_value,  co2_unit  = make_card("CO₂", "ppm", 2, 1)
+voc_card,  voc_caption,  voc_value,  voc_unit  = make_card("VOC", "index", 2, 2)
+temp_card, temp_caption, temp_value, temp_unit = make_card("TEMPERATURE", "°C", 3, 0)
+hum_card,  hum_caption,  hum_value,  hum_unit  = make_card("HUMIDITY", "% RH", 3, 1)
+pm10_card, pm10_caption, pm10_value, pm10_unit = make_card("PM 10", "µg/m³", 3, 2)
 
-quality_lbl = tk.Label(
+state_lbl = tk.Label(
     container,
     text="--",
-    font=("Arial", 42, "bold"),
-    fg="white", bg=BG,
+    font=("DejaVu Sans", pt(40), "bold"),
+    fg="white",
+    bg=BG,
 )
-quality_lbl.grid(row=3, column=0, columnspan=3, pady=14)
+state_lbl.grid(row=4, column=0, columnspan=3, pady=(pt(26), 0))
 
 status_lbl = tk.Label(
     container,
     text="Status: --",
-    font=("Arial", 20),
-    fg="white", bg=BG,
+    font=("DejaVu Sans", pt(16)),
+    fg="#e4ecf3",
+    bg=BG,
 )
-status_lbl.grid(row=4, column=0, columnspan=3)
+status_lbl.grid(row=5, column=0, columnspan=3, pady=(pt(10), 0))
 
-ALL_WIDGETS = [
-    container, title_lbl, quality_lbl, status_lbl,
-    pm25_f, pm25_t, pm25_v, pm25_u,
-    co2_f,  co2_t,  co2_v,  co2_u,
-    voc_f,  voc_t,  voc_v,  voc_u,
-    temp_f, temp_t, temp_v, temp_u,
-    hum_f,  hum_t,  hum_v,  hum_u,
-    pm10_f, pm10_t, pm10_v, pm10_u,
-]
+PAGE_WIDGETS = (container, title_lbl, subtitle_lbl, state_lbl, status_lbl)
+CARD_WIDGETS = (
+    pm25_card, pm25_caption, pm25_value, pm25_unit,
+    co2_card,  co2_caption,  co2_value,  co2_unit,
+    voc_card,  voc_caption,  voc_value,  voc_unit,
+    temp_card, temp_caption, temp_value, temp_unit,
+    hum_card,  hum_caption,  hum_value,  hum_unit,
+    pm10_card, pm10_caption, pm10_value, pm10_unit,
+)
+
+VALUE_WIDGETS = (pm25_value, co2_value, voc_value, temp_value, hum_value, pm10_value)
 
 
-def set_bg(color):
-    root.configure(bg=color)
-    for w in ALL_WIDGETS:
-        w.configure(bg=color)
+def apply_theme(bg, card):
+    root.configure(bg=bg)
+    for widget in PAGE_WIDGETS:
+        widget.configure(bg=bg)
+    for widget in CARD_WIDGETS:
+        widget.configure(bg=card)
 
 
 def update():
     data = read_sensor()
     pm25 = data["pm2p5"] if data else None
-    color, label = pm_theme(pm25)
-
-    set_bg(color)
-    quality_lbl.config(text=label)
+    bg, card, caption = theme_for(pm25)
 
     if data:
-        pm25_v.config(text=f"{data['pm2p5']:.1f}")
-        co2_v.config(text=f"{data['co2']:.0f}")
-        voc_v.config(text=f"{data['voc_index']:.0f}")
-        temp_v.config(text=f"{data['temperature']:.1f}")
-        hum_v.config(text=f"{data['humidity']:.1f}")
-        pm10_v.config(text=f"{data['pm10p0']:.1f}")
+        pm25_value.config(text=f"{data['pm2p5']:.1f}")
+        co2_value.config(text=f"{data['co2']:.0f}")
+        voc_value.config(text=f"{data['voc_index']:.0f}")
+        temp_value.config(text=f"{data['temperature']:.1f}")
+        hum_value.config(text=f"{data['humidity']:.1f}")
+        pm10_value.config(text=f"{data['pm10p0']:.1f}")
         status_lbl.config(text="Status: Normal")
     else:
-        for v in (pm25_v, co2_v, voc_v, temp_v, hum_v, pm10_v):
-            v.config(text="--")
+        for widget in VALUE_WIDGETS:
+            widget.config(text="--")
         status_lbl.config(text="Status: No Data")
+
+    state_lbl.config(text=caption)
+    apply_theme(bg, card)
 
     root.after(1000, update)
 
