@@ -37,6 +37,7 @@ bridge_port = SensorBridgePort.ONE if args.bridge_port == 1 else SensorBridgePor
 
 sensor = Sen66SensorBridge(serial_port=args.port, sensorbridge_port=bridge_port)
 sensor.connect()
+sensor.start_measurement()
 time.sleep(2)  # let the sensor stabilize
 
 
