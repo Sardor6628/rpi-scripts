@@ -138,8 +138,25 @@ done
 if [ ! -d "$REPO_DIR/.git" ]; then
     echo "Cloning $GIT_REMOTE (branch ${GIT_BRANCH:-main})"
     apt-get update -y && apt-get install -y git || true
-    sudo -u "$SYSTEM_USER" git clone -b "${GIT_BRANCH:-main}" \
-        "$GIT_REMOTE" "$REPO_DIR"
+    # A GIT_TOKEN (private repo) is handed to git via a throw-away askpass
+    # helper, so it is never stored in .git/config or visible in `ps`.
+    ASKPASS=""
+    if [ -n "${GIT_TOKEN:-}" ]; then
+        ASKPASS="$(mktemp /tmp/sw-askpass.XXXXXX)"
+        cat > "$ASKPASS" <<EOF
+#!/bin/sh
+case "\$1" in
+    *[Uu]sername*) printf '%s\n' '${GIT_USERNAME:-x-access-token}' ;;
+    *)             printf '%s\n' '${GIT_TOKEN}' ;;
+esac
+EOF
+        chmod 700 "$ASKPASS"
+        chown "$SYSTEM_USER" "$ASKPASS" 2>/dev/null || true
+    fi
+    sudo -u "$SYSTEM_USER" env GIT_TERMINAL_PROMPT=0 \
+        ${ASKPASS:+GIT_ASKPASS="$ASKPASS"} \
+        git clone -b "${GIT_BRANCH:-main}" "$GIT_REMOTE" "$REPO_DIR"
+    rm -f "$ASKPASS"
 fi
 
 # ---- Provision -------------------------------------------------------------

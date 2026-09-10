@@ -14,10 +14,10 @@
 # Which sensor this Raspberry Pi runs. One of:
 #     eagle | kumgang | mikeno | pm_halla | prikeno | sen66 | zinnwald
 # -----------------------------------------------------------------------------
-DEVICE=prikeno
+DEVICE=pm_halla
 
 # Human-readable label shown on the fullscreen dashboard.
-DEVICE_LABEL=Prikeno_Wall
+DEVICE_LABEL=Halla_Wall
 
 # Hostname to assign to this Pi (leave empty to keep the flashed default).
 HOSTNAME=sask-sensor-wall-01
@@ -39,6 +39,14 @@ WIFI_COUNTRY=DE
 # -----------------------------------------------------------------------------
 GIT_REMOTE=https://github.com/YOURORG/rpi-scripts.git
 GIT_BRANCH=main
+
+# Access token for a PRIVATE repository (leave empty for public repos).
+# Use a GitHub fine-grained personal access token limited to this repository
+# with read-only "Contents" permission - the boot partition is FAT32 and
+# readable by anyone who can plug the SD card into a PC.
+GIT_TOKEN=
+# Username sent together with the token. Keep the default for GitHub PATs.
+GIT_USERNAME=x-access-token
 
 # Where the checkout lives on the Pi. Leave empty to use the folder the
 # provisioning scripts are run from (any folder name works). Set it only when

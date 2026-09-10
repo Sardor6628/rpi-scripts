@@ -41,6 +41,21 @@ sw_load_config() {
     rm -f "$tmp"
 }
 
+# Set (or append) a KEY=value entry in the boot-partition config file.
+# Usage: sw_conf_set <key> <value> [conf]
+sw_conf_set() {
+    local key="$1" value="$2" conf="${3:-$(sw_conf_path)}"
+    if [ ! -f "$conf" ]; then
+        sw_log "config not found: $conf"
+        return 1
+    fi
+    if grep -qE "^[[:space:]]*${key}=" "$conf"; then
+        sed -i -E "s|^[[:space:]]*${key}=.*|${key}=${value}|" "$conf"
+    else
+        printf '%s=%s\n' "$key" "$value" >> "$conf"
+    fi
+}
+
 # The desktop/login user (explicit SYSTEM_USER or the uid-1000 account).
 sw_system_user() {
     if [ -n "${SYSTEM_USER:-}" ]; then
@@ -70,6 +85,45 @@ sw_repo_dir() {
         /*) echo "$REPO_DIR" ;;
         *)  echo "/home/$user/$REPO_DIR" ;;
     esac
+}
+
+# ---------------------------------------------------------------------------
+# Git authentication for private repositories.
+#
+# GIT_TOKEN from sensorwall.conf is passed to git through a throw-away
+# GIT_ASKPASS helper, so it never lands in .git/config or the process list.
+# ---------------------------------------------------------------------------
+SW_ASKPASS=""
+
+# Usage: sw_git_auth_begin <user>
+sw_git_auth_begin() {
+    local user="$1"
+    SW_ASKPASS=""
+    [ -n "${GIT_TOKEN:-}" ] || return 0
+    SW_ASKPASS="$(mktemp /tmp/sw-askpass.XXXXXX)"
+    cat > "$SW_ASKPASS" <<EOF
+#!/bin/sh
+case "\$1" in
+    *[Uu]sername*) printf '%s\n' '${GIT_USERNAME:-x-access-token}' ;;
+    *)             printf '%s\n' '${GIT_TOKEN}' ;;
+esac
+EOF
+    chmod 700 "$SW_ASKPASS"
+    [ -n "$user" ] && chown "$user" "$SW_ASKPASS" 2>/dev/null
+    return 0
+}
+
+sw_git_auth_end() {
+    [ -n "$SW_ASKPASS" ] && rm -f "$SW_ASKPASS"
+    SW_ASKPASS=""
+}
+
+# Run git as the given user, authenticated when a token is configured.
+# Usage: sw_git <user> <git args...>
+sw_git() {
+    local user="$1"; shift
+    sudo -u "$user" env GIT_TERMINAL_PROMPT=0 \
+        ${SW_ASKPASS:+GIT_ASKPASS="$SW_ASKPASS"} git "$@"
 }
 
 # Install the desktop autostart entry that launches the sensor dashboard.

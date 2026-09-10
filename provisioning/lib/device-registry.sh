@@ -6,6 +6,11 @@
 # Requires the config to be loaded first (sw_load_config).
 # =============================================================================
 
+# Every DEVICE key understood by sw_device_relpath.
+sw_device_list() {
+    echo "eagle kumgang mikeno pm_halla prikeno sen66 zinnwald"
+}
+
 # Relative path (from the repo root) of the dashboard for the selected DEVICE.
 sw_device_relpath() {
     case "${DEVICE:-}" in

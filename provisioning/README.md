@@ -40,6 +40,21 @@ flashing. Copy these two files from `provisioning/boot/`:
 - `sensorwall.conf.example` → rename to **`sensorwall.conf`** and edit it
   (`DEVICE`, `DEVICE_LABEL`, WiFi, `GIT_REMOTE`, …).
 
+### Private repository
+
+If `GIT_REMOTE` is private, put a token in `sensorwall.conf`:
+
+```
+GIT_TOKEN=github_pat_xxxxxxxx
+GIT_USERNAME=x-access-token
+```
+
+It is used for the first-boot clone and for every `update` pull. The token is
+fed to git through a temporary askpass helper, so it is never written into
+`.git/config`. It *is* stored in plain text on the FAT32 boot partition, so use
+a **fine-grained PAT scoped to this repository with read-only "Contents"**
+permission, and rotate it if a card is lost.
+
 ## Step 3 — Wire the first-boot hook
 
 Pick the path that matches how you flashed.
@@ -103,6 +118,24 @@ Edit `DEVICE` (and any label/overrides) in `sensorwall.conf` on the boot
 partition, then reboot. `sensor-update.service` re-applies the autostart for the
 new device on every boot — no re-flash required.
 
+Two helpers do the edit for you.
+
+**On the Pi** (over SSH):
+
+```bash
+sudo provisioning/bin/set-device.sh pm_halla "Halla Wall" --reboot
+```
+
+`--apply` installs the new autostart immediately instead of rebooting; without
+either flag the change takes effect on the next boot.
+
+**From Windows**, with the SD card in the PC (the boot partition is found
+automatically, or pass `-ConfPath E:\sensorwall.conf`):
+
+```powershell
+.\provisioning\tools\Set-SensorDevice.ps1 -Device pm_halla -Label 'Halla Wall'
+```
+
 ## Updating the code from git
 
 Create an empty file named **`update`** on the boot partition and reboot:
@@ -112,7 +145,8 @@ New-Item -ItemType File E:\update
 ```
 
 On the next boot the Pi pulls the latest `GIT_BRANCH`, re-runs `setup.sh` for any
-new dependencies, deletes the flag, and starts the refreshed dashboard.
+new dependencies, deletes the flag, and starts the refreshed dashboard. For a
+private repo the pull uses `GIT_TOKEN` from `sensorwall.conf`.
 
 ## What gets installed
 
@@ -132,7 +166,10 @@ provisioning/
   bin/
     provision.sh             # one-time provisioning (run by the bootstrap)
     run-dashboard.sh         # launches + respawns the dashboard at login
+    set-device.sh            # switch DEVICE in sensorwall.conf (run on the Pi)
     update-check.sh          # boot-flag git update + autostart re-apply
+  tools/
+    Set-SensorDevice.ps1     # switch DEVICE from Windows, on the SD card
   lib/
     common.sh                # shared helpers (config, autostart)
     device-registry.sh       # DEVICE -> dashboard mapping

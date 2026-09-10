@@ -40,8 +40,10 @@ done
 if [ -n "$FLAG" ]; then
     sw_log "update flag found ($FLAG) -> pulling latest from git"
     if [ -d "$REPO/.git" ]; then
-        sudo -u "$USER_NAME" git -C "$REPO" fetch --all --prune || true
-        sudo -u "$USER_NAME" git -C "$REPO" reset --hard "origin/${GIT_BRANCH:-main}" || true
+        sw_git_auth_begin "$USER_NAME"
+        sw_git "$USER_NAME" -C "$REPO" fetch --all --prune || true
+        sw_git "$USER_NAME" -C "$REPO" reset --hard "origin/${GIT_BRANCH:-main}" || true
+        sw_git_auth_end
     fi
     sw_log "re-running setup.sh for any new dependencies"
     bash "$REPO/setup.sh" || true
