@@ -7,7 +7,7 @@ Shows PM2.5, CO2, VOC, temperature, humidity and PM10 as large numbers in a grid
 with a color-coded background driven by the PM2.5 air-quality level.
 
 Usage:
-    python dashboard.py [--port /dev/ttyUSB0] [--bridge-port 1] [--label PM_Halla]
+    python dashboard.py [--port /dev/ttyUSB0] [--bridge-port 1] [--label SEN66]
 """
 import argparse
 import tkinter as tk
@@ -98,8 +98,8 @@ container.place(relx=0.5, rely=0.5, anchor="center")
 
 title_lbl = tk.Label(
     container,
-    text=args.label,
-    font=("DejaVu Sans", pt(34), "bold"),
+    text="SEN66",
+    font=("DejaVu Sans", pt(46), "bold"),
     fg="white",
     bg=BG,
 )
@@ -107,21 +107,21 @@ title_lbl.grid(row=0, column=0, columnspan=3, pady=(0, pt(4)))
 
 subtitle_lbl = tk.Label(
     container,
-    text="SEN66 AIR QUALITY",
-    font=("DejaVu Sans", pt(14)),
+    text=args.label,
+    font=("DejaVu Sans", pt(18)),
     fg="#e4ecf3",
     bg=BG,
 )
-subtitle_lbl.grid(row=1, column=0, columnspan=3, pady=(0, pt(26)))
+subtitle_lbl.grid(row=1, column=0, columnspan=3, pady=(0, pt(24)))
 
 
 def make_card(label_text, unit_text, row, col):
-    card = tk.Frame(container, bg=CARD, padx=pt(28), pady=pt(18))
-    card.grid(row=row, column=col, padx=pt(12), pady=pt(10), sticky="nsew")
+    card = tk.Frame(container, bg=CARD, padx=pt(30), pady=pt(18))
+    card.grid(row=row, column=col, padx=pt(14), pady=pt(12), sticky="nsew")
     caption = tk.Label(
         card,
         text=label_text,
-        font=("DejaVu Sans", pt(16), "bold"),
+        font=("DejaVu Sans", pt(20), "bold"),
         fg="#e4ecf3",
         bg=CARD,
     )
@@ -129,7 +129,7 @@ def make_card(label_text, unit_text, row, col):
     value = tk.Label(
         card,
         text="--",
-        font=("DejaVu Sans", pt(58), "bold"),
+        font=("DejaVu Sans", pt(76), "bold"),
         fg="white",
         bg=CARD,
     )
@@ -137,7 +137,7 @@ def make_card(label_text, unit_text, row, col):
     unit = tk.Label(
         card,
         text=unit_text,
-        font=("DejaVu Sans", pt(16)),
+        font=("DejaVu Sans", pt(18)),
         fg="#e4ecf3",
         bg=CARD,
     )
@@ -155,16 +155,16 @@ pm10_card, pm10_caption, pm10_value, pm10_unit = make_card("PM 10", "µg/m³", 3
 state_lbl = tk.Label(
     container,
     text="--",
-    font=("DejaVu Sans", pt(40), "bold"),
+    font=("DejaVu Sans", pt(46), "bold"),
     fg="white",
     bg=BG,
 )
-state_lbl.grid(row=4, column=0, columnspan=3, pady=(pt(26), 0))
+state_lbl.grid(row=4, column=0, columnspan=3, pady=(pt(24), 0))
 
 status_lbl = tk.Label(
     container,
     text="Status: --",
-    font=("DejaVu Sans", pt(16)),
+    font=("DejaVu Sans", pt(18)),
     fg="#e4ecf3",
     bg=BG,
 )
