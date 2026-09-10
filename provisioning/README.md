@@ -120,21 +120,57 @@ new device on every boot — no re-flash required.
 
 Two helpers do the edit for you.
 
-**On the Pi** (over SSH):
+### On the Pi — `bin/set-device.sh`
 
-```bash
-sudo provisioning/bin/set-device.sh pm_halla "Halla Wall" --reboot
+```
+sudo provisioning/bin/set-device.sh <device> [label] [--apply|--reboot]
 ```
 
-`--apply` installs the new autostart immediately instead of rebooting; without
-either flag the change takes effect on the next boot.
+| argument   | meaning                                                              |
+| ---------- | -------------------------------------------------------------------- |
+| `<device>` | `eagle` `kumgang` `mikeno` `pm_halla` `prikeno` `sen66` `zinnwald`    |
+| `[label]`  | optional `DEVICE_LABEL` shown on the dashboard (quote it if it has spaces) |
+| `--apply`  | reinstall the autostart now (takes effect at the next desktop login)  |
+| `--reboot` | write the config and reboot straight into the new dashboard          |
 
-**From Windows**, with the SD card in the PC (the boot partition is found
-automatically, or pass `-ConfPath E:\sensorwall.conf`):
+Examples, run from anywhere in the checkout:
+
+```bash
+cd ~/Sensor-Wall
+
+# just switch; next reboot picks it up
+sudo ./provisioning/bin/set-device.sh pm_halla
+
+# switch + label + reboot now
+sudo ./provisioning/bin/set-device.sh pm_halla "Halla Wall" --reboot
+
+# show the usage and the list of valid device names
+./provisioning/bin/set-device.sh --help
+```
+
+Notes:
+
+- Run it with a path (`./provisioning/bin/set-device.sh`), not a bare name —
+  `sudo` looks the command up in `PATH`, which excludes the current directory.
+- `sudo` is required because `sensorwall.conf` lives on the boot partition.
+- If the executable bit was lost (`Permission denied`), use
+  `sudo bash provisioning/bin/set-device.sh …` or `chmod +x` it once.
+- Unknown device names are rejected before anything is written.
+
+### From Windows — `tools/Set-SensorDevice.ps1`
+
+With the SD card in the PC. The boot partition is detected automatically by
+looking for `sensorwall.conf` on every mounted drive:
 
 ```powershell
 .\provisioning\tools\Set-SensorDevice.ps1 -Device pm_halla -Label 'Halla Wall'
+
+# if several cards/drives are mounted, name the file explicitly
+.\provisioning\tools\Set-SensorDevice.ps1 -Device zinnwald -ConfPath E:\sensorwall.conf
 ```
+
+`-Device` is validated (and tab-completes) against the same seven names. Eject
+the card, put it back in the Pi and boot — the new dashboard starts by itself.
 
 ## Updating the code from git
 
